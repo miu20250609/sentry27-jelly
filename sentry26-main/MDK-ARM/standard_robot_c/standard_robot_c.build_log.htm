@@ -28,17 +28,17 @@ Project File Date:  10/26/2026
 *** Using Compiler 'V5.06 update 5 (build 528)', folder: 'E:\keil5\ARM\ARMCC\Bin'
 Build target 'standard_robot_c'
 assembling startup_stm32f407xx.s...
-compiling gpio.c...
-compiling usbd_desc.c...
-compiling dma.c...
-compiling usbd_cdc_if.c...
 compiling stm32f4xx_hal_timebase_tim.c...
+compiling stm32f4xx_hal_msp.c...
+compiling gpio.c...
+compiling dma.c...
 compiling spi.c...
 compiling tim.c...
+compiling usbd_desc.c...
 compiling can.c...
 compiling usart.c...
+compiling usbd_cdc_if.c...
 compiling usb_device.c...
-compiling stm32f4xx_hal_msp.c...
 compiling usbd_conf.c...
 compiling freertos.c...
 ../APP/task_init.h(4): warning:  #1295-D: Deprecated declaration task_init - give arg types
@@ -50,30 +50,30 @@ compiling stm32f4xx_it.c...
 ../Core/Src/stm32f4xx_it.c: 1 warning, 0 errors
 compiling main.c...
 compiling stm32f4xx_hal_pcd_ex.c...
-compiling stm32f4xx_hal_flash.c...
-compiling stm32f4xx_hal_rcc_ex.c...
-compiling stm32f4xx_hal_flash_ramfunc.c...
-compiling stm32f4xx_hal_flash_ex.c...
-compiling stm32f4xx_hal_dma.c...
 compiling stm32f4xx_hal_pwr_ex.c...
+compiling stm32f4xx_hal_flash_ramfunc.c...
+compiling stm32f4xx_hal_flash.c...
 compiling stm32f4xx_hal_pwr.c...
-compiling stm32f4xx_hal_gpio.c...
+compiling stm32f4xx_hal_rcc_ex.c...
 compiling stm32f4xx_hal_rcc.c...
-compiling stm32f4xx_hal_dma_ex.c...
-compiling stm32f4xx_hal_tim_ex.c...
 compiling stm32f4xx_hal_pcd.c...
+compiling stm32f4xx_hal_gpio.c...
+compiling stm32f4xx_hal_dma.c...
+compiling stm32f4xx_hal_flash_ex.c...
+compiling stm32f4xx_hal_dma_ex.c...
 compiling stm32f4xx_ll_usb.c...
+compiling stm32f4xx_hal_tim_ex.c...
 compiling croutine.c...
-compiling event_groups.c...
 compiling list.c...
+compiling event_groups.c...
 compiling timers.c...
 compiling stream_buffer.c...
 compiling queue.c...
 compiling heap_4.c...
+compiling stm32f4xx_hal_tim.c...
 compiling port.c...
 compiling tasks.c...
 compiling cmsis_os.c...
-compiling stm32f4xx_hal_tim.c...
 compiling crc.c...
 compiling pid.c...
 compiling rls.c...
@@ -88,11 +88,15 @@ compiling stm32f4xx_hal_exti.c...
 compiling stm32f4xx_hal.c...
 compiling system_stm32f4xx.c...
 compiling stm32f4xx_hal_can.c...
+compiling usbd_ctlreq.c...
 compiling usbd_ioreq.c...
 compiling usbd_core.c...
 compiling stm32f4xx_hal_spi.c...
-compiling usbd_ctlreq.c...
 compiling usbd_cdc.c...
+compiling bsp_dwt.c...
+..\BSP\dwt\bsp_dwt.c(137): warning:  #1-D: last line of file ends without a newline
+  }
+..\BSP\dwt\bsp_dwt.c: 1 warning, 0 errors
 compiling stm32f4xx_hal_uart.c...
 compiling bsp_uart.c...
 ..\BSP\usart\bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
@@ -104,18 +108,13 @@ compiling bsp_can.c...
 ..\BSP\can\bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
 ..\BSP\can\bsp_can.c: 1 warning, 0 errors
-compiling bsp_dwt.c...
-..\BSP\dwt\bsp_dwt.c(137): warning:  #1-D: last line of file ends without a newline
-  }
-..\BSP\dwt\bsp_dwt.c: 1 warning, 0 errors
 compiling pid_enhanced.c...
+compiling kalman_filter.c...
 compiling QuaternionEKF.c...
 ..\Module\IMU\EKF\QuaternionEKF.h(73): warning:  #1295-D: Deprecated declaration Get_QEKF_INS - give arg types
   QEKF_INS_t* Get_QEKF_INS();
 ..\Module\IMU\EKF\QuaternionEKF.c: 1 warning, 0 errors
-compiling kalman_filter.c...
 compiling bsp_pwm.c...
-compiling BMI088Middleware.c...
 compiling CBoard_chassis.c...
 ../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
@@ -124,6 +123,7 @@ compiling CBoard_chassis.c...
 ..\Module\COMM\CBoard_chassis.c(45): warning:  #1-D: last line of file ends without a newline
   }
 ..\Module\COMM\CBoard_chassis.c: 3 warnings, 0 errors
+compiling BMI088Middleware.c...
 compiling CBoard_gimbal.c...
 ../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
@@ -132,15 +132,6 @@ compiling CBoard_gimbal.c...
 ..\Module\COMM\CBoard_gimbal.c(45): warning:  #1-D: last line of file ends without a newline
   }
 ..\Module\COMM\CBoard_gimbal.c: 3 warnings, 0 errors
-compiling power_ctrl.c...
-..\Module\Power_Ctrl\power_ctrl.h(61): warning:  #1-D: last line of file ends without a newline
-  #endif //NEW_CHASSIS_POWER_CTRL_H
-..\Module\Power_Ctrl\power_ctrl.c(222): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-      if (buffer - 
-OWERBUFFER_MAX > 1e-5)
-..\Module\Power_Ctrl\power_ctrl.c(238): warning:  #1-D: last line of file ends without a newline
-  }
-..\Module\Power_Ctrl\power_ctrl.c: 3 warnings, 0 errors
 compiling power_ctrl_param_get.c...
 ../BSP/algorithm/rls.h(106): warning:  #1-D: last line of file ends without a newline
   #endif //NEW_CHASSIS_RLS_H
@@ -157,6 +148,15 @@ compiling power_ctrl_param_get.c...
 ..\Module\Power_Ctrl\power_ctrl_param_get.c(106): warning:  #1-D: last line of file ends without a newline
   }
 ..\Module\Power_Ctrl\power_ctrl_param_get.c: 7 warnings, 0 errors
+compiling power_ctrl.c...
+..\Module\Power_Ctrl\power_ctrl.h(61): warning:  #1-D: last line of file ends without a newline
+  #endif //NEW_CHASSIS_POWER_CTRL_H
+..\Module\Power_Ctrl\power_ctrl.c(222): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+      if (buffer - 
+OWERBUFFER_MAX > 1e-5)
+..\Module\Power_Ctrl\power_ctrl.c(238): warning:  #1-D: last line of file ends without a newline
+  }
+..\Module\Power_Ctrl\power_ctrl.c: 3 warnings, 0 errors
 compiling dbus.c...
 ../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_UART_H */
@@ -191,18 +191,48 @@ compiling servo.c...
 ..\Module\Servo\servo.h(4): warning:  #1-D: last line of file ends without a newline
   #endif //STANDARD_ROBOT_C_SERVO_H
 ..\Module\Servo\servo.c: 2 warnings, 0 errors
-compiling BMI088driver.c...
-..\Module\IMU\BMI088\BMI088driver.h(112): warning:  #1295-D: Deprecated declaration BMI088_Init - give arg types
-  void BMI088_Init();
-..\Module\IMU\BMI088\BMI088driver.h(113): warning:  #1295-D: Deprecated declaration BMI088_Read - give arg types
-  void BMI088_Read();
-..\Module\IMU\BMI088\BMI088driver.c: 2 warnings, 0 errors
+compiling led.c...
+..\Module\LED\led.h(16): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_LED_H
+..\Module\LED\led.c(35): warning:  #1-D: last line of file ends without a newline
+  }
+..\Module\LED\led.c: 2 warnings, 0 errors
+compiling m2006.c...
+../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
+  #endif /* BSP_CAN_H */
+..\Module\motor\DJI\M2006\m2006.h(44): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_M2006_H
+..\Module\motor\DJI\M2006\m2006.c(75): warning:  #1-D: last line of file ends without a newline
+  }
+..\Module\motor\DJI\M2006\m2006.c: 3 warnings, 0 errors
 compiling hi12.c...
 ../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_UART_H */
 ..\Module\IMU\HI12\hi12.h(34): warning:  #1-D: last line of file ends without a newline
   #endif //STANDARD_ROBOT_C_HI12_H
 ..\Module\IMU\HI12\hi12.c: 2 warnings, 0 errors
+compiling gm6020.c...
+../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
+  #endif /* BSP_CAN_H */
+..\Module\motor\DJI\GM6020\gm6020.h(47): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_GM6020_H
+..\Module\motor\DJI\GM6020\gm6020.c(97): warning:  #1-D: last line of file ends without a newline
+  }
+..\Module\motor\DJI\GM6020\gm6020.c: 3 warnings, 0 errors
+compiling BMI088driver.c...
+..\Module\IMU\BMI088\BMI088driver.h(112): warning:  #1295-D: Deprecated declaration BMI088_Init - give arg types
+  void BMI088_Init();
+..\Module\IMU\BMI088\BMI088driver.h(113): warning:  #1295-D: Deprecated declaration BMI088_Read - give arg types
+  void BMI088_Read();
+..\Module\IMU\BMI088\BMI088driver.c: 2 warnings, 0 errors
+compiling m3508.c...
+../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
+  #endif /* BSP_CAN_H */
+..\Module\motor\DJI\M3508\m3508.h(44): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_M3508_H
+..\Module\motor\DJI\M3508\m3508.c(75): warning:  #1-D: last line of file ends without a newline
+  }
+..\Module\motor\DJI\M3508\m3508.c: 3 warnings, 0 errors
 compiling ins.c...
 ../Module/IMU/BMI088/BMI088driver.h(112): warning:  #1295-D: Deprecated declaration BMI088_Init - give arg types
   void BMI088_Init();
@@ -219,36 +249,6 @@ compiling ins.c...
 ..\Module\IMU\INS\ins.c(154): warning:  #1-D: last line of file ends without a newline
   }
 ..\Module\IMU\INS\ins.c: 7 warnings, 0 errors
-compiling led.c...
-..\Module\LED\led.h(16): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_LED_H
-..\Module\LED\led.c(35): warning:  #1-D: last line of file ends without a newline
-  }
-..\Module\LED\led.c: 2 warnings, 0 errors
-compiling m2006.c...
-../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
-  #endif /* BSP_CAN_H */
-..\Module\motor\DJI\M2006\m2006.h(44): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_M2006_H
-..\Module\motor\DJI\M2006\m2006.c(75): warning:  #1-D: last line of file ends without a newline
-  }
-..\Module\motor\DJI\M2006\m2006.c: 3 warnings, 0 errors
-compiling gm6020.c...
-../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
-  #endif /* BSP_CAN_H */
-..\Module\motor\DJI\GM6020\gm6020.h(47): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_GM6020_H
-..\Module\motor\DJI\GM6020\gm6020.c(97): warning:  #1-D: last line of file ends without a newline
-  }
-..\Module\motor\DJI\GM6020\gm6020.c: 3 warnings, 0 errors
-compiling m3508.c...
-../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
-  #endif /* BSP_CAN_H */
-..\Module\motor\DJI\M3508\m3508.h(44): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_M3508_H
-..\Module\motor\DJI\M3508\m3508.c(75): warning:  #1-D: last line of file ends without a newline
-  }
-..\Module\motor\DJI\M3508\m3508.c: 3 warnings, 0 errors
 compiling mf9025.c...
 ../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
@@ -269,12 +269,6 @@ compiling nx.c...
 ..\Module\NX\nx.h(26): warning:  #1-D: last line of file ends without a newline
   #endif //STANDARD_ROBOT_C_NX_H
 ..\Module\NX\nx.c: 2 warnings, 0 errors
-compiling referee.c...
-../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
-  #endif /* BSP_UART_H */
-../Module/NUC/nuc.h(29): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_NUC_H
-..\Module\Referee\referee.c: 2 warnings, 0 errors
 compiling super_cap.c...
 ../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
@@ -283,14 +277,18 @@ compiling super_cap.c...
 ..\Module\Super_Cap\super_cap.c(39): warning:  #1-D: last line of file ends without a newline
   }
 ..\Module\Super_Cap\super_cap.c: 3 warnings, 0 errors
-compiling vofa.c...
+compiling referee.c...
 ../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_UART_H */
-..\Module\VOFA\vofa.h(21): warning:  #1295-D: Deprecated declaration Get_Vofa_Ptr - give arg types
-  vofa_t* Get_Vofa_Ptr();
-..\Module\VOFA\vofa.h(23): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_VOFA_H
-..\Module\VOFA\vofa.c: 3 warnings, 0 errors
+../Module/NUC/nuc.h(29): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_NUC_H
+..\Module\Referee\referee.c: 2 warnings, 0 errors
+compiling daemon.c...
+../Module/LED/led.h(16): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_LED_H
+..\APP\daemon.c(15): warning:  #1295-D: Deprecated declaration Daemon_AllOnline - give arg types
+  static void Daemon_AllOnline();
+..\APP\daemon.c: 2 warnings, 0 errors
 compiling gimbal.c...
 ../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
@@ -319,12 +317,68 @@ compiling gimbal.c...
 ..\APP\gimbal.c(109): warning:  #188-D: enumerated type mixed with another type
       gimbal_ptr->ctrl.gimbal_controller = gimbal_ptr->rc->rc_data.s1;
 ..\APP\gimbal.c: 13 warnings, 0 errors
-compiling daemon.c...
-../Module/LED/led.h(16): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_LED_H
-..\APP\daemon.c(15): warning:  #1295-D: Deprecated declaration Daemon_AllOnline - give arg types
-  static void Daemon_AllOnline();
-..\APP\daemon.c: 2 warnings, 0 errors
+compiling vofa.c...
+../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
+  #endif /* BSP_UART_H */
+..\Module\VOFA\vofa.h(21): warning:  #1295-D: Deprecated declaration Get_Vofa_Ptr - give arg types
+  vofa_t* Get_Vofa_Ptr();
+..\Module\VOFA\vofa.h(23): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_VOFA_H
+..\Module\VOFA\vofa.c: 3 warnings, 0 errors
+compiling module_init.c...
+../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
+  #endif /* BSP_CAN_H */
+../Module/motor/DJI/M3508/m3508.h(44): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_M3508_H
+../Module/motor/LK/MF9025/mf9025.h(69): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_MF9025_H
+../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
+  #endif /* BSP_UART_H */
+../Module/IMU/BMI088/BMI088driver.h(112): warning:  #1295-D: Deprecated declaration BMI088_Init - give arg types
+  void BMI088_Init();
+../Module/IMU/BMI088/BMI088driver.h(113): warning:  #1295-D: Deprecated declaration BMI088_Read - give arg types
+  void BMI088_Read();
+../Module/IMU/INS/ins.h(43): warning:  #1295-D: Deprecated declaration INS_Init - give arg types
+  void INS_Init();
+../Module/IMU/INS/ins.h(44): warning:  #1295-D: Deprecated declaration INS_Update - give arg types
+  void INS_Update();
+../Module/IMU/INS/ins.h(45): warning:  #1295-D: Deprecated declaration IMU_Temperature_Ctrl - give arg types
+  void IMU_Temperature_Ctrl();
+../Module/Power_Ctrl/power_ctrl.h(61): warning:  #1-D: last line of file ends without a newline
+  #endif //NEW_CHASSIS_POWER_CTRL_H
+../BSP/algorithm/rls.h(106): warning:  #1-D: last line of file ends without a newline
+  #endif //NEW_CHASSIS_RLS_H
+../Module/Power_Ctrl/power_ctrl_param_get.h(25): warning:  #1295-D: Deprecated declaration PowerControl_Init - give arg types
+  void PowerControl_Init();
+../Module/Power_Ctrl/power_ctrl_param_get.h(29): warning:  #1295-D: Deprecated declaration PowerControl_GetParam - give arg types
+  float* PowerControl_GetParam();
+../Module/Power_Ctrl/power_ctrl_param_get.h(30): warning:  #1295-D: Deprecated declaration PowerControl_ResetRLS - give arg types
+  void PowerControl_ResetRLS();
+../Module/Power_Ctrl/power_ctrl_param_get.h(31): warning:  #1295-D: Deprecated declaration Get_PowerControlParam_Ptr - give arg types
+  PowerControlParam *Get_PowerControlParam_Ptr();
+../Module/Power_Ctrl/power_ctrl_param_get.h(33): warning:  #1-D: last line of file ends without a newline
+  #endif //NEW_CHASSIS_POWER_CTRL_PARAM_GET_H
+../Module/NUC/nuc.h(29): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_NUC_H
+../Module/COMM/CBoard_chassis.h(23): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_CBOARD_CHASSIS_H
+../Module/COMM/CBoard_gimbal.h(28): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_CBOARD_GIMBAL_H
+../Module/IMU/HI12/hi12.h(34): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_HI12_H
+../Module/motor/DJI/GM6020/gm6020.h(47): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_GM6020_H
+../Module/motor/DJI/M2006/m2006.h(44): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_M2006_H
+../Module/NX/nx.h(26): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_NX_H
+../Module/Super_Cap/super_cap.h(31): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_SUPER_CAP_H
+../Module/VOFA/vofa.h(21): warning:  #1295-D: Deprecated declaration Get_Vofa_Ptr - give arg types
+  vofa_t* Get_Vofa_Ptr();
+../Module/VOFA/vofa.h(23): warning:  #1-D: last line of file ends without a newline
+  #endif //STANDARD_ROBOT_C_VOFA_H
+..\APP\module_init.c: 28 warnings, 0 errors
 compiling task_init.c...
 ..\APP\task_init.h(4): warning:  #1295-D: Deprecated declaration task_init - give arg types
   void task_init();
@@ -387,64 +441,6 @@ compiling task_init.c...
 ../Module/LED/led.h(16): warning:  #1-D: last line of file ends without a newline
   #endif //STANDARD_ROBOT_C_LED_H
 ..\APP\task_init.c: 30 warnings, 0 errors
-compiling module_init.c...
-../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
-  #endif /* BSP_CAN_H */
-../Module/motor/DJI/M3508/m3508.h(44): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_M3508_H
-../Module/motor/LK/MF9025/mf9025.h(69): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_MF9025_H
-../BSP/usart/bsp_uart.h(55): warning:  #1-D: last line of file ends without a newline
-  #endif /* BSP_UART_H */
-../Module/DBUS/dbus.h(57): warning:  #1295-D: Deprecated declaration RemoteData_UART2CAN - give arg types
-  void RemoteData_UART2CAN();
-../Module/DBUS/dbus.h(60): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_DBUS_H
-../Module/IMU/BMI088/BMI088driver.h(112): warning:  #1295-D: Deprecated declaration BMI088_Init - give arg types
-  void BMI088_Init();
-../Module/IMU/BMI088/BMI088driver.h(113): warning:  #1295-D: Deprecated declaration BMI088_Read - give arg types
-  void BMI088_Read();
-../Module/IMU/INS/ins.h(43): warning:  #1295-D: Deprecated declaration INS_Init - give arg types
-  void INS_Init();
-../Module/IMU/INS/ins.h(44): warning:  #1295-D: Deprecated declaration INS_Update - give arg types
-  void INS_Update();
-../Module/IMU/INS/ins.h(45): warning:  #1295-D: Deprecated declaration IMU_Temperature_Ctrl - give arg types
-  void IMU_Temperature_Ctrl();
-../Module/Power_Ctrl/power_ctrl.h(61): warning:  #1-D: last line of file ends without a newline
-  #endif //NEW_CHASSIS_POWER_CTRL_H
-../BSP/algorithm/rls.h(106): warning:  #1-D: last line of file ends without a newline
-  #endif //NEW_CHASSIS_RLS_H
-../Module/Power_Ctrl/power_ctrl_param_get.h(25): warning:  #1295-D: Deprecated declaration PowerControl_Init - give arg types
-  void PowerControl_Init();
-../Module/Power_Ctrl/power_ctrl_param_get.h(29): warning:  #1295-D: Deprecated declaration PowerControl_GetParam - give arg types
-  float* PowerControl_GetParam();
-../Module/Power_Ctrl/power_ctrl_param_get.h(30): warning:  #1295-D: Deprecated declaration PowerControl_ResetRLS - give arg types
-  void PowerControl_ResetRLS();
-../Module/Power_Ctrl/power_ctrl_param_get.h(31): warning:  #1295-D: Deprecated declaration Get_PowerControlParam_Ptr - give arg types
-  PowerControlParam *Get_PowerControlParam_Ptr();
-../Module/Power_Ctrl/power_ctrl_param_get.h(33): warning:  #1-D: last line of file ends without a newline
-  #endif //NEW_CHASSIS_POWER_CTRL_PARAM_GET_H
-../Module/NUC/nuc.h(29): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_NUC_H
-../Module/COMM/CBoard_chassis.h(23): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_CBOARD_CHASSIS_H
-../Module/COMM/CBoard_gimbal.h(28): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_CBOARD_GIMBAL_H
-../Module/IMU/HI12/hi12.h(34): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_HI12_H
-../Module/motor/DJI/GM6020/gm6020.h(47): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_GM6020_H
-../Module/motor/DJI/M2006/m2006.h(44): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_M2006_H
-../Module/NX/nx.h(26): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_NX_H
-../Module/Super_Cap/super_cap.h(31): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_SUPER_CAP_H
-../Module/VOFA/vofa.h(21): warning:  #1295-D: Deprecated declaration Get_Vofa_Ptr - give arg types
-  vofa_t* Get_Vofa_Ptr();
-../Module/VOFA/vofa.h(23): warning:  #1-D: last line of file ends without a newline
-  #endif //STANDARD_ROBOT_C_VOFA_H
-..\APP\module_init.c: 28 warnings, 0 errors
 compiling chassis.c...
 ../BSP/can/bsp_can.h(73): warning:  #1-D: last line of file ends without a newline
   #endif /* BSP_CAN_H */
@@ -500,7 +496,7 @@ compiling chassis.c...
 linking...
 Program Size: Code=43364 RO-data=740 RW-data=584 ZI-data=45208  
 FromELF: creating hex file...
-"standard_robot_c\standard_robot_c.axf" - 0 Error(s), 174 Warning(s).
+"standard_robot_c\standard_robot_c.axf" - 0 Error(s), 172 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -523,7 +519,7 @@ Package Vendor: Keil
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:5.0.1
-Build Time Elapsed:  00:00:15
+Build Time Elapsed:  00:00:13
 </pre>
 </body>
 </html>

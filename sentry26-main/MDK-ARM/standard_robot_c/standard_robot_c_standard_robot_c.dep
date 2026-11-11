@@ -3141,7 +3141,7 @@ I (../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h)(0x6AB24656)
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h)(0x6AB24656)
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h)(0x6AB24656)
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h)(0x6AB24656)
-I (..\APP\chassis.h)(0x6AEC8F44)
+I (..\APP\chassis.h)(0x6AF46501)
 I (../BSP/algorithm/pid.h)(0x6AB24656)
 I (../BSP/typedef.h)(0x6AB24656)
 I (E:\keil5\ARM\ARMCC\include\stdio.h)(0x588B8344)
@@ -3208,8 +3208,8 @@ I (..\APP\daemon.h)(0x6AEB331B)
 I (../Module/LED/led.h)(0x6AB24656)
 I (..\APP\module_init.h)(0x6AB24656)
 I (..\APP\robot_config.h)(0x6AEB3354)
-F (..\APP\chassis.c)(0x6AEAD36E)(--c99 -c --cpu Cortex-M4.fp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../APP -I ../BSP -I ../Module -I ../BSP/algorithm -I ../Middlewares/ST/ARM/DSP/Inc-I.\RTE\_standard_robot_c-IE:\keil5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-IE:\keil5\ARM\PACK\Keil\STM32F4xx_DFP\2.11.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx -DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING-o standard_robot_c\chassis.o --omf_browse standard_robot_c\chassis.crf --depend standard_robot_c\chassis.d)
-I (..\APP\chassis.h)(0x6AEC8F44)
+F (..\APP\chassis.c)(0x6AEECF0F)(--c99 -c --cpu Cortex-M4.fp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../APP -I ../BSP -I ../Module -I ../BSP/algorithm -I ../Middlewares/ST/ARM/DSP/Inc-I.\RTE\_standard_robot_c-IE:\keil5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-IE:\keil5\ARM\PACK\Keil\STM32F4xx_DFP\2.11.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx -DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING-o standard_robot_c\chassis.o --omf_browse standard_robot_c\chassis.crf --depend standard_robot_c\chassis.d)
+I (..\APP\chassis.h)(0x6AF46501)
 I (../BSP/algorithm/pid.h)(0x6AB24656)
 I (../BSP/typedef.h)(0x6AB24656)
 I (E:\keil5\ARM\ARMCC\include\stdio.h)(0x588B8344)
@@ -3343,7 +3343,7 @@ I (../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h)(0x6AB24656)
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h)(0x6AB24656)
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h)(0x6AB24656)
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h)(0x6AB24656)
-F (..\APP\gimbal.c)(0x6AEB32B0)(--c99 -c --cpu Cortex-M4.fp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../APP -I ../BSP -I ../Module -I ../BSP/algorithm -I ../Middlewares/ST/ARM/DSP/Inc-I.\RTE\_standard_robot_c-IE:\keil5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-IE:\keil5\ARM\PACK\Keil\STM32F4xx_DFP\2.11.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx -DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING-o standard_robot_c\gimbal.o --omf_browse standard_robot_c\gimbal.crf --depend standard_robot_c\gimbal.d)
+F (..\APP\gimbal.c)(0x6AF460B3)(--c99 -c --cpu Cortex-M4.fp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../APP -I ../BSP -I ../Module -I ../BSP/algorithm -I ../Middlewares/ST/ARM/DSP/Inc-I.\RTE\_standard_robot_c-IE:\keil5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include-IE:\keil5\ARM\PACK\Keil\STM32F4xx_DFP\2.11.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-D__UVISION_VERSION="524" -D_RTE_ -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx -DARM_MATH_CM4 -DARM_MATH_MATRIX_CHECK -DARM_MATH_ROUNDING-o standard_robot_c\gimbal.o --omf_browse standard_robot_c\gimbal.crf --depend standard_robot_c\gimbal.d)
 I (..\APP\gimbal.h)(0x6AEB3324)
 I (../BSP/algorithm/pid.h)(0x6AB24656)
 I (../BSP/typedef.h)(0x6AB24656)
@@ -3491,5 +3491,5 @@ I (../Module/motor/DJI/M2006/m2006.h)(0x6AB24656)
 I (../Module/NX/nx.h)(0x6AB24656)
 I (../Module/Super_Cap/super_cap.h)(0x6AB24656)
 I (../Module/VOFA/vofa.h)(0x6AB24656)
-F (..\APP\robot_information_read.h)(0x6AEC8ED2)()
+F (..\APP\robot_information_read.h)(0x6AF4609D)()
 F (../Middlewares/ST/ARM/DSP/Lib/arm_cortexM4lf_math.lib)(0x6AB24656)()

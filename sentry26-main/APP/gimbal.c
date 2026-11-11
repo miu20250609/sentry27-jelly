@@ -164,7 +164,7 @@ static void gimbal_calc_rotate_pidout(gimbal_t* gimbal_ptr)
              gimbal_ptr->angle_motor->ecd[0].speed,
              gimbal_ptr->ctrl.angle_ctrl[0].given_speed);
     gimbal_ptr->ctrl.angle_ctrl[0].out = gimbal_ptr->ctrl.angle_ctrl[0].speed_pid.out[0];
-    //内环角度，外环速度
+    //内环速度，外环角度
     PID_calc(&gimbal_ptr->ctrl.angle_ctrl[1].pid, gimbal_ptr->angle.yaw_deg, gimbal_ptr->ctrl.target_yaw);
     gimbal_ptr->ctrl.angle_ctrl[1].given_speed = (int16_t)gimbal_ptr->ctrl.angle_ctrl[1].pid.out[0];
     PID_calc(&gimbal_ptr->ctrl.angle_ctrl[1].speed_pid,

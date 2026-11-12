@@ -2,3 +2,37 @@
 *.log
 其他/
 
+
+# Keil MDK 编译产物与缓存
+*.o
+*.d
+*.crf
+*.axf
+*.hex
+*.bin
+*.htm
+*.dep
+*.lnp
+*.sct
+*.uvoptx
+*.uvguix.*
+*.build_log.htm
+uv4.log.lock
+*/MDK-ARM/standard_robot_c/
+
+# Keil MDK 编译产物与缓存
+*.o
+*.d
+*.crf
+*.axf
+*.hex
+*.bin
+*.htm
+*.dep
+*.lnp
+*.sct
+*.uvoptx
+*.uvguix.*
+*.build_log.htm
+uv4.log.lock
+*/MDK-ARM/standard_robot_c/

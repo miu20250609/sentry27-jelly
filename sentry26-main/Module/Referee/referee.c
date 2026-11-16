@@ -17,86 +17,94 @@ void Referee_Init(UART_HandleTypeDef *referee_uart)
 
 void Referee_RxCallback(uint8_t* data, const uint16_t len)
 {
-    for (int i = 0; i < len; i++)
+    for (uint16_t i = 0; i + FRAME_HEADER_LEN + CMD_ID_LEN + 2U <= len; i++)
     {
-        if (data[i] == 0xA5 && i+7<len)
+        if (data[i] == SOF_VALUE)
         {
             uint8_t *rx_data = &data[i];
-            if (!Verify_CRC8_Check_Sum(rx_data, 5))
-                return ;
+            if (!Verify_CRC8_Check_Sum(rx_data, FRAME_HEADER_LEN))
+                continue;
 
             const uint16_t data_length = rx_data[1] | (rx_data[2] << 8);
-            // if(rx_data[3] != seq_last +1 && rx_data > seq_last){
-            //     lost_times++;
-            //     lost_times_percent_times++;
-            // }
-            // if(rx_data[3] < seq_last){
-            //     lost_times_percent = (float)lost_times_percent_times/256.0f;
-            //     lost_times_percent_times =0;
-            //
-            // }
-            // seq_last = rx_data[3];
-            if(i+4+2+data_length+2 < len-1)
-                if (!Verify_CRC16_Check_Sum(rx_data, data_length + 9))
-                    return ;
+            const uint32_t frame_length = (uint32_t)data_length + FRAME_HEADER_LEN + CMD_ID_LEN + 2U;
+            if (frame_length > (uint32_t)(len - i) || !Verify_CRC16_Check_Sum(rx_data, frame_length))
+                continue;
 
             const uint16_t cmd_id = (rx_data[6] << 8) | rx_data[5];
 
             switch (cmd_id)
             {
             case CMD_ID_GAME_STATUS:
-                memcpy(&referee_instance.game_status, &rx_data[7], sizeof(game_status_t));
+                if (data_length >= sizeof(referee_instance.game_status))
+                    memcpy(&referee_instance.game_status, &rx_data[7], sizeof(game_status_t));
                 break;
             case CMD_ID_GAME_RESULT:
-                memcpy(&referee_instance.game_result, &rx_data[7], sizeof(game_result_t));
+                if (data_length >= sizeof(referee_instance.game_result))
+                    memcpy(&referee_instance.game_result, &rx_data[7], sizeof(game_result_t));
                 break;
             case CMD_ID_GAME_ROBOT_HP:
-                memcpy(&referee_instance.game_robot_hp, &rx_data[7], sizeof(game_robot_HP_t));
+                if (data_length >= sizeof(referee_instance.game_robot_hp))
+                    memcpy(&referee_instance.game_robot_hp, &rx_data[7], sizeof(game_robot_HP_t));
                 break;
             case CMD_ID_EVENT_DATA:
-                memcpy(&referee_instance.event_data, &rx_data[7], sizeof(event_data_t));
+                if (data_length >= sizeof(referee_instance.event_data))
+                    memcpy(&referee_instance.event_data, &rx_data[7], sizeof(event_data_t));
                 break;
             case CMD_ID_REFEREE_WARNING:
-                memcpy(&referee_instance.referee_warning, &rx_data[7], sizeof(referee_warning_t));
+                if (data_length >= sizeof(referee_instance.referee_warning))
+                    memcpy(&referee_instance.referee_warning, &rx_data[7], sizeof(referee_warning_t));
                 break;
             case CMD_ID_DART_INFO:
-                memcpy(&referee_instance.dart_info, &rx_data[7], sizeof(dart_info_t));
+                if (data_length >= sizeof(referee_instance.dart_info))
+                    memcpy(&referee_instance.dart_info, &rx_data[7], sizeof(dart_info_t));
                 break;
             case CMD_ID_ROBOT_PERFORMANCE:
-                memcpy(&referee_instance.robot_performance, &rx_data[7], sizeof(robot_performance_t));
+                if (data_length >= sizeof(referee_instance.robot_performance))
+                    memcpy(&referee_instance.robot_performance, &rx_data[7], sizeof(robot_performance_t));
                 break;
             case CMD_ID_POWER_HEAT_DATA:
-                memcpy(&referee_instance.power_heat_data, &rx_data[7], sizeof(power_heat_data_t));
+                if (data_length >= sizeof(referee_instance.power_heat_data))
+                    memcpy(&referee_instance.power_heat_data, &rx_data[7], sizeof(power_heat_data_t));
                 break;
             case CMD_ID_ROBOT_POS:
-                memcpy(&referee_instance.robot_pos, &rx_data[7], sizeof(robot_pos_t));
+                if (data_length >= sizeof(referee_instance.robot_pos))
+                    memcpy(&referee_instance.robot_pos, &rx_data[7], sizeof(robot_pos_t));
                 break;
             case CMD_ID_BUFF_DATA:
-                memcpy(&referee_instance.buff_data, &rx_data[7], sizeof(buff_data_t));
+                if (data_length >= sizeof(referee_instance.buff_data))
+                    memcpy(&referee_instance.buff_data, &rx_data[7], sizeof(buff_data_t));
                 break;
             case CMD_ID_HURT_DATA:
-                memcpy(&referee_instance.hurt_data, &rx_data[7], sizeof(hurt_data_t));
+                if (data_length >= sizeof(referee_instance.hurt_data))
+                    memcpy(&referee_instance.hurt_data, &rx_data[7], sizeof(hurt_data_t));
                 break;
             case CMD_ID_SHOOT_DATA:
-                memcpy(&referee_instance.shoot_data, &rx_data[7], sizeof(shoot_data_t));
+                if (data_length >= sizeof(referee_instance.shoot_data))
+                    memcpy(&referee_instance.shoot_data, &rx_data[7], sizeof(shoot_data_t));
                 break;
             case CMD_ID_PROJECTILE_ALLOWANCE:
-                memcpy(&referee_instance.projectile_allowance, &rx_data[7], sizeof(projectile_allowance_t));
+                if (data_length >= sizeof(referee_instance.projectile_allowance))
+                    memcpy(&referee_instance.projectile_allowance, &rx_data[7], sizeof(projectile_allowance_t));
                 break;
             case CMD_ID_RFID_STATUS:
-                memcpy(&referee_instance.rfid_status, &rx_data[7], sizeof(rfid_status_t));
+                if (data_length >= sizeof(referee_instance.rfid_status))
+                    memcpy(&referee_instance.rfid_status, &rx_data[7], sizeof(rfid_status_t));
                 break;
             case CMD_ID_DART_CLIENT_CMD:
-                memcpy(&referee_instance.dart_client_cmd, &rx_data[7], sizeof(dart_client_cmd_t));
+                if (data_length >= sizeof(referee_instance.dart_client_cmd))
+                    memcpy(&referee_instance.dart_client_cmd, &rx_data[7], sizeof(dart_client_cmd_t));
                 break;
             case CMD_ID_ROBOT_POS_EXT:
-                memcpy(&referee_instance.robot_pos_ext, &rx_data[7], sizeof(robot_pos_ext_t));
+                if (data_length >= sizeof(referee_instance.robot_pos_ext))
+                    memcpy(&referee_instance.robot_pos_ext, &rx_data[7], sizeof(robot_pos_ext_t));
                 break;
             case CMD_ID_MARK_PROGRESS:
-                memcpy(&referee_instance.mark_progress, &rx_data[7], sizeof(mark_progress_t));
+                if (data_length >= sizeof(referee_instance.mark_progress))
+                    memcpy(&referee_instance.mark_progress, &rx_data[7], sizeof(mark_progress_t));
                 break;
             case CMD_ID_SENTRY_INFO:
-                memcpy(&referee_instance.sentry_info, &rx_data[7], sizeof(sentry_info_t));
+                if (data_length >= sizeof(referee_instance.sentry_info))
+                    memcpy(&referee_instance.sentry_info, &rx_data[7], sizeof(sentry_info_t));
                 break;
                 // case CMD_ID_RADAR_INFO :
                 //     memcpy(&referee_ins.radar_info, &rx_data[7], sizeof(radar_info_t));
@@ -104,7 +112,8 @@ void Referee_RxCallback(uint8_t* data, const uint16_t len)
             default :
                 break;
             }
-            NUC_Referee_Tran(rx_data, data_length + 9);
+            NUC_Referee_Tran(rx_data, (uint16_t)frame_length);
+            i += (uint16_t)(frame_length - 1U);
         }
     }
 }

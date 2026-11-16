@@ -415,6 +415,7 @@ while(1)
 
 1. **底盘 / 云台共用同一个工程和 C 板配置**。`task_init.c` 和 `module_init.c` 都根据 `CHASSIS` 选择任务和模块。Keil 在 `APP/robot_config.h` 中启用 `CHASSIS` 构建底盘，取消定义构建云台。CMake 默认构建云台，配置时传 `-DSENTRY_BUILD_CHASSIS=ON` 构建底盘。
    底盘默认由 CAN2（1 Mbit/s）收 NUC 控制，使用小端标准数据帧：`0x401`（DLC 4，uint32 自决策）、`0x402`（DLC 5，int16 vx、int16 vy，单位 mm/s，末字节为 flags）、`0x403`（DLC 2，int16 大云台 yaw，单位 0.01°）。USART6 TX 继续向 NUC 回传裁判原始帧。将 `NUC_USE_CAN` 改为 `0` 并重新编译可恢复 USART6 接收原串口控制帧。
+   CAN 和 UART 共用 200 ms 的 `0x402` 超时保护。UPC 模式下，未收到有效指令或超时后，三轴速度目标经滤波归零，小陀螺、扫描和超电请求失效。大云台保留上一次目标角。下一条有效 `0x402` 到达后自动恢复。
 
 2. **`.c` 里找不到 `main` 的直接调用链很正常**。任务函数是 `osThreadCreate()` 注册进去的，不会有人"调用"它，得从 `task_init.c` 反查。
 

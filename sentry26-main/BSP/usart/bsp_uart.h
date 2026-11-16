@@ -3,6 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
+#include "queue.h"
 
 /* 缓冲区配置 */
 #define RX_BUFFER_SIZE          128U
@@ -33,12 +34,11 @@ struct UART_Handle_s {
     UART_RxCallback_t RxCallback;                 /* 接收完成回调函数 */
     UART_ErrorCallback_t ErrorCallback;           /* 错误回调函数（可选） */
     osThreadId txTaskHandle;                      /* DMA发送的FreeRTOS任务句柄 */
-    osMailQId txMailHandle;                       /* 发送请求的消息邮箱 */
-    osSemaphoreId txSemaphore;                     /* 线程安全的缓冲区访问互斥量 */
+    QueueHandle_t txQueue;                         /* 按完整报文排队 */
+    osSemaphoreId txSemaphore;                     /* DMA 发送缓冲区可用信号 */
     uint16_t rxBufferSize;                        /* 接收缓冲区大小 */
     uint16_t txBufferSize;                        /* 发送缓冲区大小 */
     uint16_t StackSize;                           /* 发送任务栈大小 */
-    volatile uint8_t txBusy;                      /* 发送忙标志 */
 };
 
 /* Function prototypes */

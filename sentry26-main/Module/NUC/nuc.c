@@ -3,13 +3,13 @@
 #include "usart.h"
 #include "user_lib.h"
 #include <math.h>
-#include <stdbool.h>
 #include <string.h>
 
 #define NUC_SOF 0xA5U
 #define NUC_HEADER_SIZE 5U
 #define NUC_PAYLOAD_OFFSET 7U
 #define NUC_FRAME_OVERHEAD (NUC_PAYLOAD_OFFSET + 2U)
+#define NUC_CHASSIS_TIMEOUT_MS 200U
 
 static void NucRxCallback(uint8_t* data, uint16_t len);
 static void NUC_CanRxCallback(const uint8_t* data, uint32_t id, void* arg);
@@ -21,6 +21,8 @@ static nuc_ctrl_t nuc_instance;
 static uint8_t nuc_rx_buffer[RX_BUFFER_SIZE];
 static uint16_t nuc_rx_size;
 static bool nuc_uart_ready;
+static bool nuc_chassis_received;
+static uint32_t nuc_chassis_rx_tick;
 
 static void NUC_InitUART(UART_HandleTypeDef* nuc_uart, UART_RxCallback_t rx_callback)
 {
@@ -189,6 +191,29 @@ static void NUC_UpdateChassis(fp32 vx, fp32 vy, uint8_t flags)
     nuc_instance.chassis_spin = flags & 0x01;
     nuc_instance.gimbal_scan = (flags >> 1) & 0x01;
     nuc_instance.use_cap = (flags >> 2) & 0x01;
+    nuc_chassis_rx_tick = HAL_GetTick();
+    nuc_chassis_received = true;
+}
+
+bool NUC_GetChassisCommand(nuc_chassis_cmd_t* command)
+{
+    // 防止 CAN/UART 接收中断在读出同一帧的字段时更新它们。
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    if (nuc_chassis_received && HAL_GetTick() - nuc_chassis_rx_tick >= NUC_CHASSIS_TIMEOUT_MS)
+        nuc_chassis_received = false;
+
+    const bool fresh = nuc_chassis_received;
+    if (fresh)
+    {
+        *command = (nuc_chassis_cmd_t) {
+            .vx = nuc_instance.vx, .vy = nuc_instance.vy, .vw = nuc_instance.vw,
+            .chassis_spin = nuc_instance.chassis_spin, .gimbal_scan = nuc_instance.gimbal_scan,
+            .use_cap = nuc_instance.use_cap,
+        };
+    }
+    __set_PRIMASK(primask);
+    return fresh;
 }
 
 static void NUC_Gimbal_Handler(const uint8_t* data, const uint16_t len)

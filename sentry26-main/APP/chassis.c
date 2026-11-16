@@ -19,14 +19,14 @@ static void chassis_filter_init(chassis_t* chassis_ptr);
 static void chassis_pid_init(chassis_t* chassis_ptr);
 static uint8_t chassis_check_game_start(const chassis_t* chassis_ptr);
 static void chassis_switch_controller(chassis_t* chassis_ptr);
-static void chassis_calc_move_speed(chassis_t* chassis_ptr);
-static void chassis_calc_rotate_angle(chassis_t* chassis_ptr);
+static void chassis_calc_move_speed(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd);
+static void chassis_calc_rotate_angle(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd);
 static void chassis_calc_angle(chassis_t* chassis_ptr);
-static void chassis_calc_wheelmotor_speed(chassis_t* chassis_ptr);
+static void chassis_calc_wheelmotor_speed(chassis_t* chassis_ptr, bool nuc_stop);
 static void chassis_calc_gimbalmotor_angle(chassis_t* chassis_ptr);
 static void chassis_calc_wheelmotor_pidout(chassis_t* chassis_ptr);
 static void chassis_calc_gimbalmotor_pidout(chassis_t* chassis_ptr);
-static void chassis_set_max_power(chassis_t* chassis_ptr);
+static void chassis_set_max_power(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd);
 static void chassis_update_power_param(const chassis_t* chassis_ptr);
 static void chassis_limit_power(chassis_t* chassis_ptr);
 static void chassis_send_wheelmotor_cmd(const chassis_t* chassis_ptr);
@@ -66,20 +66,23 @@ void Chassis_Task(const void* argument)
     while(1)
     {
         osDelay(1);
+        nuc_chassis_cmd_t command;
+        const nuc_chassis_cmd_t* nuc_cmd = NUC_GetChassisCommand(&command) ? &command : NULL;
         // if (!chassis_check_game_start(&chassis)) continue;
         if (ctrl_loop % 3 == 0) // 控制循环 300Hz左右
         {
 
             chassis_switch_controller(&chassis);       // 切换控制源（遥控/上位机等）
-            chassis_calc_move_speed(&chassis);         // 计算并过滤移动速度
-            chassis_calc_wheelmotor_speed(&chassis);   // 解算底盘轮毂电机速度
+            chassis_calc_move_speed(&chassis, nuc_cmd);
+            const bool nuc_stop = chassis.ctrl.chassis_controller == CHASSIS_UPC && nuc_cmd == NULL;
+            chassis_calc_wheelmotor_speed(&chassis, nuc_stop);
             chassis_calc_wheelmotor_pidout(&chassis);  // 计算电机控制PID输出
             chassis_send_wheelmotor_cmd(&chassis);     // 下发3508控制指令
         }
         else if (ctrl_loop % 3 == 1) // 云台控制循环 300Hz左右，和底盘控制错开，减少CAN总线冲突
         {
             chassis_switch_controller(&chassis);        // 切换控制源（遥控/上位机等）
-            chassis_calc_rotate_angle(&chassis);        // 计算云台旋转角度
+            chassis_calc_rotate_angle(&chassis, nuc_cmd);
             chassis_calc_angle(&chassis);               // 计算绝对角度信息
             chassis_calc_gimbalmotor_angle(&chassis);   // 解算航向云台角度环
             chassis_calc_gimbalmotor_pidout(&chassis);  // 计算云台控制PID输出
@@ -87,7 +90,7 @@ void Chassis_Task(const void* argument)
         }
         else
         {
-            chassis_set_max_power(&chassis);            // 设置最大允许功率限制（包括超电策略）
+            chassis_set_max_power(&chassis, nuc_cmd);
             //chassis_update_power_param(&chassis);     // 功率控制参数更新 (当前未使用)
             //chassis_limit_power(&chassis);            // 功率分配控制算法 (当前未使用)
         }
@@ -142,7 +145,7 @@ static void chassis_switch_controller(chassis_t* chassis_ptr)
 /**
  * @brief 解算给定移动速度（获取控制源指令并滤波）
  */
-static void chassis_calc_move_speed(chassis_t* chassis_ptr)
+static void chassis_calc_move_speed(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd)
 {
     fp32 vx, vy, vw;
     if (chassis_ptr->ctrl.chassis_controller == CHASSIS_RC)//遥控器控制
@@ -154,13 +157,13 @@ static void chassis_calc_move_speed(chassis_t* chassis_ptr)
         vy = (fp32)chassis_ptr->rc->rc_data.ch2 * CHASSIS_MAX_V / RC_VAL_MAX;//ch2,3是遥控器左边摇杆的x,y轴
         vw = (fp32)chassis_ptr->rc->rc_data.ch1 * CHASSIS_MAX_V / RC_VAL_MAX;
     }
-    else if (chassis_ptr->ctrl.chassis_controller == CHASSIS_UPC)//上位机控制
+    else if (chassis_ptr->ctrl.chassis_controller == CHASSIS_UPC && nuc_cmd != NULL)
     {
-        chassis_ptr->ctrl.chassis_spin = chassis_ptr->nuc_ctrl->chassis_spin;//是否小陀螺
+        chassis_ptr->ctrl.chassis_spin = nuc_cmd->chassis_spin;
 
-        vx = loop_float_constrain(chassis_ptr->nuc_ctrl->vx, -CHASSIS_MAX_V, CHASSIS_MAX_V);
-        vy = loop_float_constrain(chassis_ptr->nuc_ctrl->vy, -CHASSIS_MAX_V, CHASSIS_MAX_V);
-        vw = loop_float_constrain(chassis_ptr->nuc_ctrl->vw, -CHASSIS_MAX_V, CHASSIS_MAX_V);
+        vx = loop_float_constrain(nuc_cmd->vx, -CHASSIS_MAX_V, CHASSIS_MAX_V);
+        vy = loop_float_constrain(nuc_cmd->vy, -CHASSIS_MAX_V, CHASSIS_MAX_V);
+        vw = loop_float_constrain(nuc_cmd->vw, -CHASSIS_MAX_V, CHASSIS_MAX_V);
 
         if (chassis_ptr->ctrl.chassis_spin)
             vw = SPIN_VW_SPEED;//码一下，之后是否要以不同的速度小陀螺
@@ -194,7 +197,7 @@ static void chassis_calc_move_speed(chassis_t* chassis_ptr)
 /**
  * @brief 解算云台旋转的给定角度
  */
-static void chassis_calc_rotate_angle(chassis_t* chassis_ptr)
+static void chassis_calc_rotate_angle(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd)
 {
     if (chassis_ptr->ctrl.chassis_controller == CHASSIS_RC)
     {
@@ -206,7 +209,9 @@ static void chassis_calc_rotate_angle(chassis_t* chassis_ptr)
     else if (chassis_ptr->ctrl.chassis_controller == CHASSIS_UPC)
     {
         chassis_ptr->ctrl.gimbal_shutdown_flag = 0;
-        chassis_ptr->ctrl.gimbal_scan = chassis_ptr->nuc_ctrl->gimbal_scan;
+        chassis_ptr->ctrl.gimbal_scan = nuc_cmd != NULL && nuc_cmd->gimbal_scan;
+        if (nuc_cmd == NULL)
+            return; // 超时后保持上一次大云台目标角。
         if (chassis_ptr->ctrl.gimbal_scan)
             chassis_ptr->nuc_ctrl->gimbal_yaw += GIMBAL_ANGLE_DELTA_MAX;//每周期大yaw自动加0.12度
         chassis_ptr->ctrl.given_gimbal_l_yaw = chassis_ptr->nuc_ctrl->gimbal_yaw;
@@ -271,11 +276,12 @@ void Omni_Kinematics_Resolve(const fp32 vx, const fp32 vy, const fp32 vw, const 
 /**
  * @brief 解算3508电机的目标速度（给四个轮毂下发指令速度）
  */
-static void chassis_calc_wheelmotor_speed(chassis_t* chassis_ptr)
+static void chassis_calc_wheelmotor_speed(chassis_t* chassis_ptr, bool nuc_stop)
 {
     const fp32 chassis_v = chassis_ptr->ctrl.given_chassis_v[0];
     const fp32 theta = chassis_ptr->ctrl.given_chassis_v[1];
-    const fp32 chassis_w = chassis_ptr->ctrl.given_chassis_w + chassis_ptr->gimbal_angle.yaw_rad;//？量纲似乎不统一，一个是rpm一个是rad，这一行的意图是云台带底盘卸力吗
+    // NUC 超时减速时关闭云台跟随项，确保轮速目标最终归零。
+    const fp32 chassis_w = chassis_ptr->ctrl.given_chassis_w + (nuc_stop ? 0.0f : chassis_ptr->gimbal_angle.yaw_rad);
     const fp32 vx = chassis_v * cosf(theta);
     const fp32 vy = chassis_v * sinf(theta);
     int16_t motor_speeds[4];
@@ -318,9 +324,9 @@ static void chassis_calc_gimbalmotor_pidout(chassis_t* chassis_ptr)
 /**
  * @brief 最大功率限制参数设置与超级电容控制模式控制策略
  */
-static void chassis_set_max_power(chassis_t* chassis_ptr)
+static void chassis_set_max_power(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd)
 {
-    chassis_ptr->ctrl.use_cap = chassis_ptr->nuc_ctrl->use_cap;
+    chassis_ptr->ctrl.use_cap = nuc_cmd != NULL && nuc_cmd->use_cap;
     switch (chassis_ptr->ctrl.use_cap) // 该策略仅作联盟赛哨兵使用
     {
         case 0: // 常规情况，不使用超电

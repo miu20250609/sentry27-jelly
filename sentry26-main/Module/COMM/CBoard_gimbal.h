@@ -2,11 +2,12 @@
 #define STANDARD_ROBOT_C_CBOARD_GIMBAL_H
 #include "typedef.h"
 #include "can/bsp_can.h"
+#include "DBUS/dbus.h"
 
 typedef enum
 {
     CMD_ID_REFEREE_GET = 0x601,
-    CMD_ID_RC_TRAN = 0x600,
+    CMD_ID_RC_TRAN = DBUS_CANID,
     CMD_ID_IMU_TRAN = 0x603,
 } cboard_gimbal_cmd_id_t;
 

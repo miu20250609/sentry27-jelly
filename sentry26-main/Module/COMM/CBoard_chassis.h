@@ -2,11 +2,12 @@
 #define STANDARD_ROBOT_C_CBOARD_CHASSIS_H
 #include "user_lib.h"
 #include "can/bsp_can.h"
+#include "DBUS/dbus.h"
 
 typedef enum
 {
     CMD_ID_REFEREE_TRAN = 0x601,
-    CMD_ID_RC_GET = 0x600, // 为统一，将can总线上传输的遥控器数据也放在了DBUS内，方便底盘控制器调用，这里只是说明这个数据是从云台发向底盘的
+    CMD_ID_RC_GET = DBUS_CANID, // 由 DBUS 模块接收云台转发的遥控数据
     CMD_ID_IMU_GET = 0x603,
 } cboard_chassis_cmd_id_t;
 

@@ -94,13 +94,16 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         BSP/algorithm
 )
 
+# Select the board firmware built from this project.
+option(SENTRY_BUILD_CHASSIS "Build chassis firmware instead of gimbal firmware" OFF)
+
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
         ARM_MATH_CM4;ARM_MATH_MATRIX_CHECK;ARM_MATH_ROUNDING
         MADE_BY_CMAKE
 
-        # CHASSIS
+        $<$<BOOL:${SENTRY_BUILD_CHASSIS}>:CHASSIS>
         OMNI
 )
 

@@ -1,6 +1,7 @@
 #ifndef STANDARD_ROBOT_C_NUC_H
 #define STANDARD_ROBOT_C_NUC_H
 #include "usart/bsp_uart.h"
+#include "can/bsp_can.h"
 #include "typedef.h"
 
 typedef enum
@@ -23,6 +24,7 @@ typedef struct
 } nuc_ctrl_t;
 
 void NUC_Init(UART_HandleTypeDef *nuc_uart);
+CAN_Status_t NUC_Init_CAN(CAN_HandleTypeDef *nuc_can, UART_HandleTypeDef *referee_uart);
 nuc_ctrl_t *Get_NUC_Ctrl_Instance(void);
 void NUC_Referee_Tran(const uint8_t* data, uint16_t len);
 

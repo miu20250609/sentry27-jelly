@@ -1,4 +1,5 @@
 #include "module_init.h"
+#include "robot_config.h"
 #include "can.h"
 #include "motor/DJI/M3508/m3508.h"
 #include "motor/LK/MF9025/mf9025.h"
@@ -30,7 +31,11 @@ void Modules_Init(void) {
     m3508_init(&hcan1, M3508_TX_1, 4);
     BMI088_Init();
     super_cap_init(&hcan1);
+#if NUC_USE_CAN
+    NUC_Init_CAN(&hcan2, &huart6);
+#else
     NUC_Init(&huart6);
+#endif
     Referee_Init(&huart1);
     CBoard_Chassis_Init(&hcan2);
 #else

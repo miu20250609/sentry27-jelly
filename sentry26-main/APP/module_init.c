@@ -19,6 +19,7 @@
 #include "NX/nx.h"
 #include "Super_Cap/super_cap.h"
 #include "VOFA/vofa.h"
+#include "gimbal.h"
 
 void Modules_Init(void) {
     DWT_Init(DWT_CLOCK_FREQ);
@@ -43,7 +44,11 @@ void Modules_Init(void) {
     CBoard_Gimbal_Init(&hcan2);
     NX_Init(&hcan2);
     HI12_Init(&huart1);
+#if GIMBAL_USE_VOFA
     vofa_init(&huart6, 4, 0);
+#else
+    IM900_Init(&huart6);
+#endif
     m3508_init(&hcan1, M3508_TX_1, 2);
     m2006_init(&hcan1, M2006_TX_2, 1);
     gm6020_init(&hcan1, GM6020_TX_2, 2);

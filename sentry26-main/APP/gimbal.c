@@ -28,7 +28,9 @@ static void gimbal_send_trigger_cmd(const gimbal_t* gimbal_ptr);
 static void gimbal_send_rotate_cmd(const gimbal_t* gimbal_ptr);
 static void gimbal_send_rc(const gimbal_t* gimbal_ptr);
 static void gimbal_send_angle(const gimbal_t* gimbal_ptr);
+#if GIMBAL_USE_VOFA
 static void gimbal_debug(const gimbal_t* gimbal_ptr);
+#endif
 
 void Gimbal_Init(gimbal_t* gimbal_ptr)
 {
@@ -38,12 +40,15 @@ void Gimbal_Init(gimbal_t* gimbal_ptr)
     gimbal_ptr->nx_ctrl = Get_NX_Ctrl_Instance();
     gimbal_ptr->rc = Get_DBUS_Instance();
     gimbal_ptr->hi12 = Get_HI12_Instance();
+    gimbal_ptr->im900 = Get_IM900_Instance();
 
     gimbal_ptr->angle_motor = Get_GM6020_Ptr(GM6020_TX_2);
     gimbal_ptr->trigger_motor = Get_M2006_Ptr(M2006_TX_2);
     gimbal_ptr->friction_motor = Get_M3508_Ptr(M3508_TX_1);
 
+#if GIMBAL_USE_VOFA
     gimbal_ptr->vofa = Get_Vofa_Ptr();
+#endif
 
     gimbal_pid_init(gimbal_ptr);
 }
@@ -80,8 +85,10 @@ void Gimbal_Task(const void* argument)
             gimbal_send_rc(&gimbal);
         else if (ctrl_loop % 5 == 1)
             gimbal_send_angle(&gimbal);
+#if GIMBAL_USE_VOFA
         else if (ctrl_loop % 5 == 2)
             gimbal_debug(&gimbal);
+#endif
 
         ctrl_loop++;
         if (ctrl_loop > 3000) ctrl_loop = 0;
@@ -226,14 +233,19 @@ static void gimbal_send_rc(const gimbal_t* gimbal_ptr)
 }
 static void gimbal_send_angle(const gimbal_t* gimbal_ptr)
 {
-    const fp32 gimbal_yaw = gimbal_ptr->hi12->imu_data.yaw;//这里的gimbal_yaw指的是大yaw，imu是安在大yaw上面的
-    CBoard_IMU_Transmit(gimbal_yaw);
+#if !GIMBAL_USE_VOFA
+    im900_data_t data;
+    if (IM900_GetData(&data) && (data.data_flags & IM900_DATA_EULER) != 0U)
+        CBoard_IMU_Transmit(data.yaw);
+#endif
 
     const fp32 quaternion[4] = {0.0f, 0.0f, 0.0f, 0.0f};//四元数，用于把云台姿态报给nx，目前没有启用
     NX_SendAngle(quaternion);
 }
+#if GIMBAL_USE_VOFA
 static void gimbal_debug(const gimbal_t* gimbal_ptr)
 {//                                                                           ai说底下这里应该改成gimbal_ptr->angle_motor->ecd[1].speed？意图是第二个电机转速？码一下之后看看
     const fp32 debug[4] = {(float)gimbal_ptr->ctrl.angle_ctrl[1].given_speed, (float)gimbal_ptr->angle_motor[1].ecd->speed, gimbal_ptr->ctrl.target_yaw, gimbal_ptr->angle.yaw_deg};
     vofa_print(debug);
 }
+#endif

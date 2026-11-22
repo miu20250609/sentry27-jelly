@@ -15,6 +15,8 @@ typedef struct
 {
     CAN_Instance_t* can_instance;
     fp32 imu_angle[3];
+    fp32 imu_initial_yaw;
+    volatile uint8_t imu_ready;
     uint8_t init;
 } cboard_chassis_t;
 

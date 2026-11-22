@@ -73,6 +73,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Module/IMU/EKF/QuaternionEKF.c
         Module/IMU/INS/ins.c
         Module/IMU/HI12/hi12.c
+        Module/IMU/IM900/im900.c
         Module/Super_Cap/super_cap.c
         Module/Power_Ctrl/power_ctrl.c
         Module/Power_Ctrl/power_ctrl_param_get.c

@@ -235,14 +235,23 @@ static void chassis_calc_angle(chassis_t* chassis_ptr)
     static float chassis_angle_temp[3] = {0.0f, 0.0f, 0.0f};
     static float gimbal_l_offset[3] = {0.0f, 0.0f, 0.0f};//偏置角度包，取上电那一帧的角度，之后所有操作都在此基础上进行，防止上电猛转
 
-    memcpy(gimbal_l_ptr, chassis_ptr->cboard_chassis->imu_angle, sizeof(chassis_ptr->cboard_chassis->imu_angle));
-    //chassis_ptr->cboard_chassis->imu_angle是底盘c板从云台c板收到的数据包，存的是云台c板（安在大云台）的姿态
-    if (!gimbal_l_get_offset){
-        gimbal_l_get_offset = 1;//只在上电时取一次偏置
-        memcpy(gimbal_l_offset, gimbal_l_ptr, sizeof(gimbal_l_ptr));
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const uint8_t imu_ready = chassis_ptr->cboard_chassis->imu_ready;
+    memcpy(gimbal_l_ptr, chassis_ptr->cboard_chassis->imu_angle, sizeof(gimbal_l_ptr));
+    const fp32 initial_yaw = chassis_ptr->cboard_chassis->imu_initial_yaw;
+    __set_PRIMASK(primask);
+    if (!imu_ready)
+        return;
+
+    if (!gimbal_l_get_offset)
+    {
+        gimbal_l_get_offset = 1;
+        gimbal_l_offset[0] = initial_yaw;
+        gimbal_l_ptr[0] = initial_yaw;
     }
-    else
-        for (int i = 0; i < 3; i++) gimbal_l_ptr[i] -= gimbal_l_offset[i];
+    for (int i = 0; i < 3; i++)
+        gimbal_l_ptr[i] = theta_format(gimbal_l_ptr[i] - gimbal_l_offset[i]);
     Angle_Update(&chassis_ptr->gimbal_angle, gimbal_l_ptr);
     yaw_diff = theta_format((fp32)(chassis_ptr->mf9025->ecd.ecd - chassis_ptr->mf9025->ecd.ecd_offset)/ MF9025_ECD_MAX * DEG_PER_CIRCLE);
     zero_diff = theta_format((fp32)chassis_ptr->mf9025->ecd.zero_offset/ MF9025_ECD_MAX * DEG_PER_CIRCLE);

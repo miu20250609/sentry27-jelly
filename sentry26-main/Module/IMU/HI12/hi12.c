@@ -10,7 +10,7 @@ void HI12_Init(UART_HandleTypeDef* uart_handle)
 {
     if (uart_handle == NULL)
         return;
-    BSP_UART_Init(&hi12_instance.imu_uart, uart_handle, 256000, imuCallback, NULL, 0, RX_BUFFER_SIZE);
+    BSP_UART_Init(&hi12_instance.imu_uart, uart_handle, 115200, imuCallback, NULL, 0, RX_BUFFER_SIZE);
     hi12_instance.init = 1;
 }
 

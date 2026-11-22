@@ -10,7 +10,13 @@
 #include "NX/nx.h"
 #include "DBUS/dbus.h"
 #include "IMU/HI12/hi12.h"
+#include "IMU/IM900/im900.h"
 #include "VOFA/vofa.h"
+
+// 1：USART6 用于无线 VOFA，0：用于大云台 IM900；修改后重新编译。
+#ifndef GIMBAL_USE_VOFA
+#define GIMBAL_USE_VOFA 0
+#endif
 
 #define SMALL_GIMBAL_ANGLE_DELTA_MAX 0.08f
 #define TRIGGER_SPEED_MAX 1000
@@ -82,6 +88,7 @@ typedef struct
     nx_ctrl_t* nx_ctrl;
     rc_instance* rc;
     hi12_t* hi12;
+    im900_t* im900;
 
     vofa_t* vofa;
 } gimbal_t;

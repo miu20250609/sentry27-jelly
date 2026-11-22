@@ -42,8 +42,9 @@
 - 仅有效 `0x402` 刷新 200 ms 超时计时。UPC 超时经滤波停车、取消小陀螺/扫描/超电请求，大 yaw 保留目标角，新有效指令自动恢复。
 - 遥控接收机接云台板 DBUS 专用口，遥控数据经 CAN2 以 `DBUS_CANID = 0x602` 转到底盘。其他模块的遥控 ID 引用该定义。
 - 实物可接通用模块的串口只考虑 USART1 和 USART6。USART3 是 DBUS 专用硬件接口，不因 MCU 有对应引脚就假定可以外接模块。
-- 底盘 USART1 接裁判系统，USART6 回传裁判数据给 NUC。云台 USART1 接 HI12、USART6 默认接 IM900，均为 115200。HI12 当前输出 20 Hz。
-- `APP/gimbal.h` 的 `GIMBAL_USE_VOFA=1` 将云台 USART6 切到无线 VOFA，IM900 接收及大 yaw 转发暂停，切回 0 恢复 IM900，均需重新编译。此时不能依赖大云台姿态控制实车。
+- 底盘 USART1 接裁判系统，USART6 回传裁判数据给 NUC。云台 USART1 接 HI12、USART6 默认接 IM900，均为 115200。HI12 当前输出 100 Hz。
+- VOFA 在 `APP/robot_config.h` 只选择串口，观测变量直接编辑 `gimbal_debug()` 或 `chassis_debug()` 的 `debug[]` 数组，可混合各类本板数据，通道数自动按数组长度计算。云台常用 USART6 看电机或 HI12，观察 IM900 时用 USART1。被 VOFA 占用串口上的 IMU 暂停，HI12 不替代 IM900 的大 yaw。
+- 底盘 VOFA 使用本板 USART6 直接看本地数据，要求 NUC 走 CAN，此时仅暂停 USART6 裁判回传，USART1 裁判接收继续。调试默认关闭，修改配置后重新编译。
 - Keil 在 `APP/robot_config.h` 选择 `CHASSIS`。CMake 用 `SENTRY_BUILD_CHASSIS=ON` 构建底盘，默认构建云台。任务、模块初始化和相关算法必须使用一致的板型定义。
 - 改通信前检查 ID 占用、帧类型、DLC、符号、端序和超时语义。线上格式或行为变化必须明确告知用户及所需的导航/视觉端配合。
 

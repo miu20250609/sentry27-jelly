@@ -33,7 +33,11 @@ void Modules_Init(void) {
     BMI088_Init();
     super_cap_init(&hcan1);
 #if NUC_USE_CAN
+#if CHASSIS_VOFA_PORT == VOFA_PORT_UART6
+    NUC_Init_CAN(&hcan2, NULL);
+#else
     NUC_Init_CAN(&hcan2, &huart6);
+#endif
 #else
     NUC_Init(&huart6);
 #endif
@@ -43,10 +47,10 @@ void Modules_Init(void) {
     dbus_init(RC_DIRECT, &hcan2);
     CBoard_Gimbal_Init(&hcan2);
     NX_Init(&hcan2);
+#if GIMBAL_VOFA_PORT != VOFA_PORT_UART1
     HI12_Init(&huart1);
-#if GIMBAL_USE_VOFA
-    vofa_init(&huart6, 4, 0);
-#else
+#endif
+#if GIMBAL_VOFA_PORT != VOFA_PORT_UART6
     IM900_Init(&huart6);
 #endif
     m3508_init(&hcan1, M3508_TX_1, 2);

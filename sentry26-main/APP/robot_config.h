@@ -2,16 +2,42 @@
 #ifndef STANDARD_ROBOT_C_ROBOT_CONFIG_H
 #define STANDARD_ROBOT_C_ROBOT_CONFIG_H
 
-// 底盘 NUC 控制来源：1 = CAN2，0 = USART6。裁判回传始终使用 USART6。
+// 底盘 NUC 控制来源：1 = CAN2，0 = USART6。
 #ifndef NUC_USE_CAN
 #define NUC_USE_CAN 1
+#endif
+
+// 选择 VOFA 接口，观测变量在各板 debug() 的发送数组中修改。
+#define VOFA_PORT_OFF 0
+#define VOFA_PORT_UART1 1
+#define VOFA_PORT_UART6 6
+
+#ifndef GIMBAL_VOFA_PORT
+#define GIMBAL_VOFA_PORT VOFA_PORT_UART1
+//#define GIMBAL_VOFA_PORT VOFA_PORT_UART6
+//#define GIMBAL_VOFA_PORT VOFA_PORT_OFF
+#endif
+
+#ifndef CHASSIS_VOFA_PORT
+//#define CHASSIS_VOFA_PORT VOFA_PORT_UART6
+#define CHASSIS_VOFA_PORT VOFA_PORT_OFF
+#endif
+
+#if GIMBAL_VOFA_PORT != VOFA_PORT_OFF && GIMBAL_VOFA_PORT != VOFA_PORT_UART1 && GIMBAL_VOFA_PORT != VOFA_PORT_UART6
+#error "GIMBAL_VOFA_PORT must be OFF, UART1 or UART6"
+#endif
+#if CHASSIS_VOFA_PORT != VOFA_PORT_OFF && CHASSIS_VOFA_PORT != VOFA_PORT_UART6
+#error "CHASSIS_VOFA_PORT supports OFF or UART6"
+#endif
+#if CHASSIS_VOFA_PORT != VOFA_PORT_OFF && !NUC_USE_CAN
+#error "Chassis UART6 VOFA requires NUC control over CAN"
 #endif
 
 #ifndef MADE_BY_CMAKE
 
 //#define USE_CBOARD_IMU
 #ifndef CHASSIS
-#define CHASSIS
+//#define CHASSIS
 #endif
 //#define GIMBAL
 #ifndef OMNI

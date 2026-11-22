@@ -12,11 +12,7 @@
 #include "IMU/HI12/hi12.h"
 #include "IMU/IM900/im900.h"
 #include "VOFA/vofa.h"
-
-// 1：USART6 用于无线 VOFA，0：用于大云台 IM900；修改后重新编译。
-#ifndef GIMBAL_USE_VOFA
-#define GIMBAL_USE_VOFA 0
-#endif
+#include "robot_config.h"
 
 #define SMALL_GIMBAL_ANGLE_DELTA_MAX 0.08f
 #define TRIGGER_SPEED_MAX 1000

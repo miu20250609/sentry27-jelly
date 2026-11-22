@@ -841,24 +841,25 @@ ARM Macro Assembler    Page 13
               00002000 
               00002000 
               00000000 
-Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp.sp --apcs=
-interwork --depend=standard_robot_c\startup_stm32f407xx.d -ostandard_robot_c\st
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp --apcs=int
+erwork --depend=standard_robot_c\startup_stm32f407xx.d -ostandard_robot_c\start
 
 
 
 ARM Macro Assembler    Page 14 
 
 
-artup_stm32f407xx.o -I../Core/Inc -I../USB_DEVICE/App -I../USB_DEVICE/Target -I
-../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legac
-y -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_P
-arty/FreeRTOS/Source/CMSIS_RTOS -I../Middlewares/Third_Party/FreeRTOS/Source/po
-rtable/RVDS/ARM_CM4F -I../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I..
-/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I../Drivers/CMSIS/Devic
-e/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/ST/ARM/DSP/I
-nc -I.\RTE\_standard_robot_c -IF:\keil5\ARM\Packs\ARM\CMSIS\6.3.0\CMSIS\Core\In
-clude --predefine="__UVISION_VERSION SETA 543" --predefine="STM32F407xx SETA 1"
- --predefine="_RTE_ SETA 1" --list=startup_stm32f407xx.lst startup_stm32f407xx.
+up_stm32f407xx.o -I../Core/Inc -I../USB_DEVICE/App -I../USB_DEVICE/Target -I../
+Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -
+I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Part
+y/FreeRTOS/Source/CMSIS_RTOS -I../Middlewares/Third_Party/FreeRTOS/Source/porta
+ble/RVDS/ARM_CM4F -I../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I../Mi
+ddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I../Drivers/CMSIS/Device/S
+T/STM32F4xx/Include -I../Drivers/CMSIS/Include -I../Middlewares/ST/ARM/DSP/Inc 
+-I.\RTE\_standard_robot_c -IE:\keil5\ARM\PACK\ARM\CMSIS\5.0.1\CMSIS\Include -IE
+:\keil5\ARM\PACK\Keil\STM32F4xx_DFP\2.11.0\Drivers\CMSIS\Device\ST\STM32F4xx\In
+clude --predefine="__UVISION_VERSION SETA 524" --predefine="_RTE_ SETA 1" --pre
+define="STM32F407xx SETA 1" --list=startup_stm32f407xx.lst startup_stm32f407xx.
 s
 
 

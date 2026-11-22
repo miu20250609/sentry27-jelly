@@ -1,4 +1,6 @@
 #include "chassis.h"
+#include "VOFA/vofa.h"
+#include "usart.h"
 #include <string.h>
 #include "robot_config.h"
 #include "arm_math.h"
@@ -15,6 +17,9 @@ const uint16_t mf9025_speed_pid_config[3] = {80, 10, 10};
 chassis_t chassis;
 
 // ---------- 内部静态函数声明 ----------
+#if CHASSIS_VOFA_PORT != VOFA_PORT_OFF
+static void chassis_debug(const chassis_t* chassis_ptr);
+#endif
 static void chassis_filter_init(chassis_t* chassis_ptr);
 static void chassis_pid_init(chassis_t* chassis_ptr);
 static uint8_t chassis_check_game_start(const chassis_t* chassis_ptr);
@@ -100,6 +105,10 @@ void Chassis_Task(const void* argument)
             chassis_send_referee_info(&chassis); // 发送裁判系统信息到云台
         }
 
+#if CHASSIS_VOFA_PORT != VOFA_PORT_OFF
+        if (ctrl_loop % 10 == 0)
+            chassis_debug(&chassis);
+#endif
         ctrl_loop++;
         if (ctrl_loop > 3000) ctrl_loop = 0;
     }
@@ -438,3 +447,23 @@ static void chassis_send_referee_info(const chassis_t* chassis_ptr)
     const uint16_t bullet_allow = chassis_ptr->referee->projectile_allowance.projectile_allowance_17mm;
     CBoard_Referee_Tranmit(game_start, camp, attitude, shoot_heat, bullet_allow);
 }
+
+#if CHASSIS_VOFA_PORT != VOFA_PORT_OFF
+static void chassis_debug(const chassis_t* chassis_ptr)
+{
+    // 按此数组顺序输出，可直接替换、增加或减少本板变量。
+    const fp32 debug[] = {
+        (fp32)chassis_ptr->ctrl.m3508_controller[0].given_speed,
+        (fp32)chassis_ptr->ctrl.m3508_controller[1].given_speed,
+        (fp32)chassis_ptr->ctrl.m3508_controller[2].given_speed,
+        (fp32)chassis_ptr->ctrl.m3508_controller[3].given_speed,
+        (fp32)chassis_ptr->m3508->ecd[0].speed,
+        (fp32)chassis_ptr->m3508->ecd[1].speed,
+        (fp32)chassis_ptr->m3508->ecd[2].speed,
+        (fp32)chassis_ptr->m3508->ecd[3].speed,
+    };
+    if (!Get_Vofa_Ptr()->init)
+        vofa_init(&huart6, sizeof(debug) / sizeof(debug[0]), 0);
+    vofa_print(debug);
+}
+#endif

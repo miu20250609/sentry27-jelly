@@ -65,8 +65,8 @@ void Gimbal_Task(const void* argument)
         gimbal_switch_controller(&gimbal);
         if (ctrl_loop % 3 == 0) // 控制循环 300Hz左右
         {
-            gimbal_calc_target_angle(&gimbal);
             gimbal_calc_current_angle(&gimbal);
+            gimbal_calc_target_angle(&gimbal);
             gimbal_calc_rotate_pidout(&gimbal);
             gimbal_send_rotate_cmd(&gimbal);
         }
@@ -119,17 +119,25 @@ static void gimbal_switch_controller(gimbal_t* gimbal_ptr)
 
 static void gimbal_calc_target_angle(gimbal_t* gimbal_ptr)
 {
+    const bool accept_target = gimbal_ptr->ctrl.feedback == GIMBAL_FEEDBACK_HI12 &&
+                               !gimbal_ptr->ctrl.feedback_changed;
     if (gimbal_ptr->ctrl.gimbal_controller == GIMBAL_RC)
     {
-        gimbal_ptr->ctrl.target_yaw -= (fp32)gimbal_ptr->rc->rc_data.ch0 * SMALL_GIMBAL_ANGLE_DELTA_MAX / RC_VAL_MAX;
-        gimbal_ptr->ctrl.target_pitch += (fp32)gimbal_ptr->rc->rc_data.ch1 * SMALL_GIMBAL_ANGLE_DELTA_MAX / RC_VAL_MAX;
+        if (accept_target)
+        {
+            gimbal_ptr->ctrl.target_yaw -= (fp32)gimbal_ptr->rc->rc_data.ch0 * SMALL_GIMBAL_ANGLE_DELTA_MAX / RC_VAL_MAX;
+            gimbal_ptr->ctrl.target_pitch += (fp32)gimbal_ptr->rc->rc_data.ch1 * SMALL_GIMBAL_ANGLE_DELTA_MAX / RC_VAL_MAX;
+        }
         gimbal_ptr->ctrl.fire = gimbal_ptr->rc->rc_data.roll > (RC_CH_VALUE_MAX - RC_CH_VALUE_OFFSET) / 2 ? 1 : 0;
         gimbal_ptr->ctrl.open_friction = (gimbal_ptr->rc->rc_data.s2 == 2) ? 1 : 0;
     }
     else if (gimbal_ptr->ctrl.gimbal_controller == GIMBAL_UPC)
     {
-        gimbal_ptr->ctrl.target_yaw = gimbal_ptr->nx_ctrl->target_yaw;
-        gimbal_ptr->ctrl.target_pitch = gimbal_ptr->nx_ctrl->target_pitch;
+        if (accept_target)
+        {
+            gimbal_ptr->ctrl.target_yaw = gimbal_ptr->nx_ctrl->target_yaw;
+            gimbal_ptr->ctrl.target_pitch = gimbal_ptr->nx_ctrl->target_pitch;
+        }
         gimbal_ptr->ctrl.fire = gimbal_ptr->nx_ctrl->fire;
         gimbal_ptr->ctrl.open_friction = (gimbal_ptr->rc->rc_data.s2 == 2) ? 1 : 0; //测试完改为等于fire
     }
@@ -138,19 +146,59 @@ static void gimbal_calc_target_angle(gimbal_t* gimbal_ptr)
         gimbal_ptr->ctrl.fire = 0;
         gimbal_ptr->ctrl.open_friction = 0;
     }
-    float_constrain(&gimbal_ptr->ctrl.target_yaw, -YAW_LIMIT, YAW_LIMIT);
-    float_constrain(&gimbal_ptr->ctrl.target_pitch, -PITCH_LIMIT, PITCH_LIMIT);
+    if (gimbal_ptr->ctrl.feedback == GIMBAL_FEEDBACK_HI12)
+    {
+        // 用机械相对角约束本次可达的姿态增量，大 yaw 转动时限位随之改变。
+        fp32 yaw_delta = theta_format(gimbal_ptr->ctrl.target_yaw - gimbal_ptr->angle.yaw_deg);
+        fp32 pitch_delta = gimbal_ptr->ctrl.target_pitch - gimbal_ptr->angle.pitch_deg;
+        float_constrain(&yaw_delta, -YAW_LIMIT - gimbal_ptr->ctrl.encoder_yaw,
+                                   YAW_LIMIT - gimbal_ptr->ctrl.encoder_yaw);
+        float_constrain(&pitch_delta, -PITCH_LIMIT - gimbal_ptr->ctrl.encoder_pitch,
+                                     PITCH_LIMIT - gimbal_ptr->ctrl.encoder_pitch);
+        gimbal_ptr->ctrl.target_yaw = theta_format(gimbal_ptr->angle.yaw_deg + yaw_delta);
+        gimbal_ptr->ctrl.target_pitch = gimbal_ptr->angle.pitch_deg + pitch_delta;
+    }
+    else
+    {
+        float_constrain(&gimbal_ptr->ctrl.target_yaw, -YAW_LIMIT, YAW_LIMIT);
+        float_constrain(&gimbal_ptr->ctrl.target_pitch, -PITCH_LIMIT, PITCH_LIMIT);
+    }
 }
 
 static void gimbal_calc_current_angle(gimbal_t* gimbal_ptr)
 {
-    const int pitch_ecd = gimbal_ptr->angle_motor->ecd[0].ecd;
-    const int yaw_ecd = gimbal_ptr->angle_motor->ecd[1].ecd;
+    gimbal_ctrl_t* ctrl = &gimbal_ptr->ctrl;
+    ctrl->encoder_pitch = theta_format((fp32)gimbal_ptr->angle_motor->ecd[0].ecd * 360.0f / 8192.0f - ECD_PITCH_OFFSET);
+    ctrl->encoder_yaw = theta_format((fp32)gimbal_ptr->angle_motor->ecd[1].ecd * 360.0f / 8192.0f - ECD_YAW_OFFSET);
 
-    gimbal_ptr->angle.yaw_deg =
-        theta_format((fp32)yaw_ecd * 360.0f / 8192.0f - ECD_YAW_OFFSET);
-    gimbal_ptr->angle.pitch_deg =
-        theta_format((fp32)pitch_ecd * 360.0f / 8192.0f - ECD_PITCH_OFFSET);
+    SensorDataPacket sample;
+    uint32_t update_time;
+    const bool fresh = HI12_GetData(&sample, &update_time) &&
+                       (uint32_t)(HAL_GetTick() - update_time) < HI12_TIMEOUT_MS;
+    const Gimbal_Feedback feedback = fresh ? GIMBAL_FEEDBACK_HI12 : GIMBAL_FEEDBACK_ENCODER_HOLD;
+    if (fresh)
+    {
+        gimbal_ptr->angle.yaw_deg = theta_format(HI12_YAW_SIGN * sample.yaw - HI12_YAW_OFFSET);
+        gimbal_ptr->angle.pitch_deg = HI12_PITCH_SIGN * sample.pitch - HI12_PITCH_OFFSET;
+    }
+    else
+    {
+        gimbal_ptr->angle.yaw_deg = ctrl->encoder_yaw;
+        gimbal_ptr->angle.pitch_deg = ctrl->encoder_pitch;
+    }
+
+    ctrl->feedback_changed = feedback != ctrl->feedback;
+    if (ctrl->feedback_changed)
+    {
+        ctrl->feedback = feedback;
+        ctrl->target_yaw = gimbal_ptr->angle.yaw_deg;
+        ctrl->target_pitch = gimbal_ptr->angle.pitch_deg;
+        for (uint8_t axis = 0; axis < 2; axis++)
+        {
+            PID_clear(&ctrl->angle_ctrl[axis].pid);
+            PID_clear(&ctrl->angle_ctrl[axis].speed_pid);
+        }
+    }
 }
 
 static void gimbal_fire_confirm(gimbal_t* gimbal_ptr)
@@ -166,20 +214,34 @@ static void gimbal_fire_confirm(gimbal_t* gimbal_ptr)
 
 static void gimbal_calc_rotate_pidout(gimbal_t* gimbal_ptr)
 {
-    PID_calc(&gimbal_ptr->ctrl.angle_ctrl[0].pid, gimbal_ptr->angle.pitch_deg, gimbal_ptr->ctrl.target_pitch);
-    gimbal_ptr->ctrl.angle_ctrl[0].given_speed = (int16_t)gimbal_ptr->ctrl.angle_ctrl[0].pid.out[0];
-    PID_calc(&gimbal_ptr->ctrl.angle_ctrl[0].speed_pid,
-             gimbal_ptr->angle_motor->ecd[0].speed,
-             gimbal_ptr->ctrl.angle_ctrl[0].given_speed);
-    gimbal_ptr->ctrl.angle_ctrl[0].out = gimbal_ptr->ctrl.angle_ctrl[0].speed_pid.out[0];
-    //内环速度，外环角度
-    PID_calc(&gimbal_ptr->ctrl.angle_ctrl[1].pid, gimbal_ptr->angle.yaw_deg, gimbal_ptr->ctrl.target_yaw);
-    gimbal_ptr->ctrl.angle_ctrl[1].given_speed = (int16_t)gimbal_ptr->ctrl.angle_ctrl[1].pid.out[0];
-    PID_calc(&gimbal_ptr->ctrl.angle_ctrl[1].speed_pid,
-             gimbal_ptr->angle_motor->ecd[1].speed,
-             gimbal_ptr->ctrl.angle_ctrl[1].given_speed);
-    gimbal_ptr->ctrl.angle_ctrl[1].out = gimbal_ptr->ctrl.angle_ctrl[1].speed_pid.out[0];
+    const fp32 feedback[2] = {gimbal_ptr->angle.pitch_deg, gimbal_ptr->angle.yaw_deg};
+    const fp32 target[2] = {gimbal_ptr->ctrl.target_pitch, gimbal_ptr->ctrl.target_yaw};
+    const fp32 encoder[2] = {gimbal_ptr->ctrl.encoder_pitch, gimbal_ptr->ctrl.encoder_yaw};
+    const fp32 limit[2] = {PITCH_LIMIT, YAW_LIMIT};
+    for (uint8_t axis = 0; axis < 2; axis++)
+    {
+        angle_ctrl_t* motor = &gimbal_ptr->ctrl.angle_ctrl[axis];
+        const fp32 error = axis == 1 ? theta_format(target[axis] - feedback[axis]) : target[axis] - feedback[axis];
+        // 归一化后的角度差供外环使用，速度内环仍采用电机转速。
+        PID_calc(&motor->pid, 0.0f, error);
+        motor->given_speed = (int16_t)motor->pid.out[0];
+        if ((encoder[axis] >= limit[axis] && motor->given_speed > 0) ||
+            (encoder[axis] <= -limit[axis] && motor->given_speed < 0))
+        {
+            motor->given_speed = 0;
+            PID_clear(&motor->pid);
+        }
+        PID_calc(&motor->speed_pid, gimbal_ptr->angle_motor->ecd[axis].speed, motor->given_speed);
+        motor->out = motor->speed_pid.out[0];
+        if ((encoder[axis] >= limit[axis] && motor->out > 0.0f) ||
+            (encoder[axis] <= -limit[axis] && motor->out < 0.0f))
+        {
+            motor->out = 0.0f;
+            PID_clear(&motor->speed_pid);
+        }
+    }
 }
+
 static void gimbal_calc_friction_pidout(gimbal_t* gimbal_ptr)
 {
     gimbal_ptr->ctrl.friction_ctrl[0].given_speed = (gimbal_ptr->ctrl.open_friction) ? FRICTION_SPEED_MAX : 0;

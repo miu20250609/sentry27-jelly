@@ -24,6 +24,20 @@
 #define ECD_YAW_OFFSET 60.0f
 #define ECD_PITCH_OFFSET 180.0f
 
+#define HI12_TIMEOUT_MS 200U
+// 待实车标定：模块姿态转换到瞄准控制坐标，单位度。
+#define HI12_YAW_SIGN 1.0f
+#define HI12_PITCH_SIGN 1.0f
+#define HI12_YAW_OFFSET 0.0f
+#define HI12_PITCH_OFFSET 0.0f
+
+typedef enum
+{
+    GIMBAL_FEEDBACK_UNINITIALIZED = 0,
+    GIMBAL_FEEDBACK_HI12,
+    GIMBAL_FEEDBACK_ENCODER_HOLD
+} Gimbal_Feedback;
+
 typedef enum
 {
     GIMBAL_RC_OFFLINE = 0, // 遥控器掉线
@@ -32,29 +46,27 @@ typedef enum
     GIMBAL_SHUTDOWN = 1 // 关机状态
 } Gimbal_Controller;
 
-// M3508 电机控制结构体
 typedef struct
 {
-    pid_t pid; // PID控制器
-    int16_t given_speed; // 给定速度
-    fp32 out; // 输出值
+    pid_t pid;
+    int16_t given_speed;
+    fp32 out; 
 } friction_ctrl_t;
 
-// M2006 电机控制结构体
 typedef struct
 {
-    pid_t pid; // PID控制器
-    int16_t given_speed; // 给定速度
-    fp32 out; // 输出值
+    pid_t pid; 
+    int16_t given_speed; 
+    fp32 out; 
 } trigger_ctrl_t;
 
 // GM6020 电机控制结构体
 typedef struct
 {
-    pid_t pid; // angle loop PID
-    pid_t speed_pid; // speed loop PID
-    int16_t given_speed; // speed loop setpoint
-    fp32 out; // speed loop output
+    pid_t pid;
+    pid_t speed_pid;
+    int16_t given_speed; 
+    fp32 out; 
 } angle_ctrl_t;
 
 typedef struct
@@ -62,6 +74,9 @@ typedef struct
     Gimbal_Controller gimbal_controller;
     fp32 target_yaw;
     fp32 target_pitch;
+    fp32 encoder_pitch, encoder_yaw;
+    Gimbal_Feedback feedback;
+    uint8_t feedback_changed;
     uint8_t open_friction;
     uint8_t friction_ready;
     uint8_t fire;

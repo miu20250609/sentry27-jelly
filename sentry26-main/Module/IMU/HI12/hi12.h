@@ -1,5 +1,6 @@
 #ifndef STANDARD_ROBOT_C_HI12_H
 #define STANDARD_ROBOT_C_HI12_H
+#include <stdbool.h>
 #include "typedef.h"
 #include "usart/bsp_uart.h"
 
@@ -25,10 +26,13 @@ typedef struct
 {
     UART_Instance_t imu_uart;
     SensorDataPacket imu_data;
+    uint32_t update_time;
+    uint8_t data_ready;
     uint8_t init;
 } hi12_t;
 
 void HI12_Init(UART_HandleTypeDef* uart_handle);
 hi12_t *Get_HI12_Instance(void);
+bool HI12_GetData(SensorDataPacket* data, uint32_t* update_time);
 
 #endif //STANDARD_ROBOT_C_HI12_H

@@ -16,6 +16,7 @@ static void NUC_CanRxCallback(const uint8_t* data, uint32_t id, void* arg);
 static void NUC_Chassis_Handler(const uint8_t* data, uint16_t len);
 static void NUC_Gimbal_Handler(const uint8_t* data, uint16_t len);
 static void NUC_UpdateChassis(fp32 vx, fp32 vy, uint8_t flags);
+static void NUC_UpdateGimbal(fp32 yaw);
 
 static nuc_ctrl_t nuc_instance;
 static uint8_t nuc_rx_buffer[RX_BUFFER_SIZE];
@@ -82,7 +83,7 @@ static void NUC_CanRxCallback(const uint8_t* data, uint32_t id, void* arg)
                               NUC_ReadInt16LE(&data[2]) / 1000.0f, data[4]);
             break;
         case CMD_ID_BIG_GIMBAL_CTRL:
-            nuc_instance.gimbal_yaw = NUC_ReadInt16LE(data) / 100.0f;
+            NUC_UpdateGimbal(NUC_ReadInt16LE(data) / 100.0f);
             break;
         default:
             break;
@@ -189,7 +190,6 @@ static void NUC_UpdateChassis(fp32 vx, fp32 vy, uint8_t flags)
     nuc_instance.vx = vx;
     nuc_instance.vy = vy;
     nuc_instance.chassis_spin = flags & 0x01;
-    nuc_instance.gimbal_scan = (flags >> 1) & 0x01;
     nuc_instance.use_cap = (flags >> 2) & 0x01;
     nuc_chassis_rx_tick = HAL_GetTick();
     nuc_chassis_received = true;
@@ -208,7 +208,7 @@ bool NUC_GetChassisCommand(nuc_chassis_cmd_t* command)
     {
         *command = (nuc_chassis_cmd_t) {
             .vx = nuc_instance.vx, .vy = nuc_instance.vy, .vw = nuc_instance.vw,
-            .chassis_spin = nuc_instance.chassis_spin, .gimbal_scan = nuc_instance.gimbal_scan,
+            .chassis_spin = nuc_instance.chassis_spin,
             .use_cap = nuc_instance.use_cap,
         };
     }
@@ -221,7 +221,35 @@ static void NUC_Gimbal_Handler(const uint8_t* data, const uint16_t len)
     if (len < 4)
         return;
 
-    unpack_4bytes_to_floats(&data[0], &nuc_instance.gimbal_yaw);
+    fp32 yaw;
+    unpack_4bytes_to_floats(&data[0], &yaw);
+    NUC_UpdateGimbal(yaw);
+}
+
+static void NUC_UpdateGimbal(fp32 yaw)
+{
+    if (!isfinite(yaw))
+        return;
+    nuc_instance.gimbal_yaw = yaw;
+    nuc_instance.gimbal_yaw_sequence++;
+    nuc_instance.gimbal_yaw_received = 1;
+}
+
+bool NUC_GetGimbalCommand(fp32* yaw, uint32_t* sequence)
+{
+    if (yaw == NULL || sequence == NULL)
+        return false;
+
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool received = nuc_instance.gimbal_yaw_received;
+    if (received)
+    {
+        *yaw = nuc_instance.gimbal_yaw;
+        *sequence = nuc_instance.gimbal_yaw_sequence;
+    }
+    __set_PRIMASK(primask);
+    return received;
 }
 
 void NUC_Referee_Tran(const uint8_t* data, const uint16_t len)

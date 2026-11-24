@@ -50,6 +50,7 @@ void Chassis_Init(chassis_t* chassis_ptr)
     chassis_ptr->ctx = Get_PowerControlParam_Ptr();
     chassis_ptr->mf9025 = Get_MF9025_Ptr(MF9025_TX_MIN);
     chassis_ptr->nuc_ctrl = Get_NUC_Ctrl_Instance();
+    chassis_ptr->nx_ctrl = Get_NX_Ctrl_Instance();
     chassis_ptr->power_ctrl_config = Get_PowerControllerConfig_Ptr();
     chassis_ptr->power_ctrl_result = Get_PowerAllocationResult_Ptr();
     chassis_ptr->rc = Get_DBUS_Instance();
@@ -160,7 +161,6 @@ static void chassis_calc_move_speed(chassis_t* chassis_ptr, const nuc_chassis_cm
     if (chassis_ptr->ctrl.chassis_controller == CHASSIS_RC)//遥控器控制
     {
         chassis_ptr->ctrl.chassis_spin = 0;//注意这个是nuc请求的小陀螺模式标志，不是说不能小陀螺，后面vw即为遥控器控制的小陀螺角速度
-        chassis_ptr->ctrl.gimbal_scan = 0;
 
         vx = (fp32)chassis_ptr->rc->rc_data.ch3 * CHASSIS_MAX_V / RC_VAL_MAX;
         vy = (fp32)chassis_ptr->rc->rc_data.ch2 * CHASSIS_MAX_V / RC_VAL_MAX;//ch2,3是遥控器左边摇杆的x,y轴
@@ -180,7 +180,6 @@ static void chassis_calc_move_speed(chassis_t* chassis_ptr, const nuc_chassis_cm
     else
     {
         chassis_ptr->ctrl.chassis_spin = 0;
-        chassis_ptr->ctrl.gimbal_scan = 0;
 
         vx = 0;
         vy = 0;
@@ -208,28 +207,44 @@ static void chassis_calc_move_speed(chassis_t* chassis_ptr, const nuc_chassis_cm
  */
 static void chassis_calc_rotate_angle(chassis_t* chassis_ptr, const nuc_chassis_cmd_t* nuc_cmd)
 {
+    fp32 nuc_yaw = 0.0f;
+    uint32_t sequence = 0;
+    const bool received = NUC_GetGimbalCommand(&nuc_yaw, &sequence);
+    bool scan = false;
+    NX_GetScanRequest(chassis_ptr->nx_ctrl, &scan);
+
     if (chassis_ptr->ctrl.chassis_controller == CHASSIS_RC)
     {
         chassis_ptr->ctrl.gimbal_shutdown_flag = 0;
-        chassis_ptr->ctrl.gimbal_scan = 0;//不扫描
+        chassis_ptr->ctrl.gimbal_scan = 0;
         const fp32 yaw_delta = (fp32)chassis_ptr->rc->rc_data.ch0 * GIMBAL_ANGLE_DELTA_MAX / RC_VAL_MAX;
-        chassis_ptr->ctrl.given_gimbal_l_yaw += yaw_delta;//控制大yaw转，大yaw电机是反着装的
+        chassis_ptr->ctrl.given_gimbal_l_yaw += yaw_delta;
     }
     else if (chassis_ptr->ctrl.chassis_controller == CHASSIS_UPC)
     {
         chassis_ptr->ctrl.gimbal_shutdown_flag = 0;
-        chassis_ptr->ctrl.gimbal_scan = nuc_cmd != NULL && nuc_cmd->gimbal_scan;
-        if (nuc_cmd == NULL)
-            return; // 超时后保持上一次大云台目标角。
-        if (chassis_ptr->ctrl.gimbal_scan)
-            chassis_ptr->nuc_ctrl->gimbal_yaw += GIMBAL_ANGLE_DELTA_MAX;//每周期大yaw自动加0.12度
-        chassis_ptr->ctrl.given_gimbal_l_yaw = chassis_ptr->nuc_ctrl->gimbal_yaw;
+        chassis_ptr->ctrl.gimbal_scan = scan;
+        if (scan)
+        {
+            chassis_ptr->ctrl.given_gimbal_l_yaw += GIMBAL_ANGLE_DELTA_MAX;
+            // 扫描期间收到的角度不在退出扫描后重放，上位机负责协调控制权。
+            if (received)
+                chassis_ptr->ctrl.gimbal_yaw_sequence = sequence;
+        }
+        else if (nuc_cmd != NULL && received && sequence != chassis_ptr->ctrl.gimbal_yaw_sequence)
+        {
+            chassis_ptr->ctrl.given_gimbal_l_yaw = nuc_yaw;
+            chassis_ptr->ctrl.gimbal_yaw_sequence = sequence;
+        }
+        return;
     }
     else
     {
         chassis_ptr->ctrl.gimbal_scan = 0;
         chassis_ptr->ctrl.gimbal_shutdown_flag = 1;
     }
+    if (received)
+        chassis_ptr->ctrl.gimbal_yaw_sequence = sequence;
 }
 
 /**

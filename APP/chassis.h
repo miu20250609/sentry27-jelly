@@ -11,6 +11,7 @@
 #include "Power_Ctrl/power_ctrl_param_get.h"
 #include "Super_Cap/super_cap.h"
 #include "NUC/nuc.h"
+#include "NX/nx.h"
 #include "Referee/referee.h"
 #include "COMM/CBoard_chassis.h"
 
@@ -69,6 +70,7 @@ typedef struct
     fp32 maxpower; // 最大功率限制
     uint8_t chassis_spin; // 小陀螺模式标志
     uint8_t gimbal_scan; // 云台扫描模式标志
+    uint32_t gimbal_yaw_sequence;
     uint8_t gimbal_shutdown_flag; // 云台关闭标志
     uint8_t last_gimbal_shutdown_flag; // 上次云台关闭标志
 
@@ -83,6 +85,7 @@ typedef struct
 
     rc_instance *rc; // 遥控器实例
     nuc_ctrl_t *nuc_ctrl; // NUC控制实例
+    nx_ctrl_t *nx_ctrl;
     referee_t *referee; // 裁判系统实例
     super_cap_instance *super_cap; // 超级电容实例
     cboard_chassis_t *cboard_chassis; // 底盘控制板通信实例

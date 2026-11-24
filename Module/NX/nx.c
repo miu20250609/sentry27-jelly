@@ -1,31 +1,53 @@
 #include "nx.h"
 #include <string.h>
 
+#define NX_SCAN_TIMEOUT_MS 200U
+
 static nx_ctrl_t nx_instance;
 
 void NX_CtrlCallback(const uint8_t *data, uint32_t id, void* arg);
 
 void NX_Init(CAN_HandleTypeDef *hcan)
 {
-    if (hcan == NULL)
+    if (hcan == NULL || nx_instance.init)
         return;
     memset(&nx_instance, 0, sizeof(nx_ctrl_t));
     nx_instance.nx_can = BSP_CAN_Init(hcan);
-    BSP_CAN_RegisterStdCallback(nx_instance.nx_can, CMD_ID_GIMBAL_CTRL, NX_CtrlCallback, &nx_instance);
+    if (nx_instance.nx_can == NULL ||
+        BSP_CAN_RegisterStdCallback(nx_instance.nx_can, CMD_ID_GIMBAL_CTRL, NX_CtrlCallback, &nx_instance) != CAN_OK)
+        return;
     nx_instance.init = 1;
 }
 
 void NX_CtrlCallback(const uint8_t *data, uint32_t id, void *arg)
 {
-    if (data == NULL || arg == NULL)
+    if (data == NULL || arg == NULL || id != CMD_ID_GIMBAL_CTRL)
         return;
     nx_ctrl_t *nx_ctrl = (nx_ctrl_t *)arg;
+    if (!nx_ctrl->init)
+        return;
     nx_ctrl->fire = data[0] & 0x01;
     nx_ctrl->scan = (data[0] >> 1) & 0x01;
     const int16_t yaw = (int16_t)(data[1] | (data[2] << 8));
     const int16_t pitch = (int16_t)(data[3] | (data[4] << 8));
     nx_ctrl->target_yaw = (float)yaw / 100.0f;   // 转换为度
     nx_ctrl->target_pitch = (float)pitch / 100.0f; // 转换为度
+    nx_ctrl->update_time = HAL_GetTick();
+    nx_ctrl->data_ready = 1;
+}
+
+bool NX_GetScanRequest(const nx_ctrl_t* nx_ctrl, bool* scan)
+{
+    if (nx_ctrl == NULL || scan == NULL)
+        return false;
+
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool fresh = nx_ctrl->init && nx_ctrl->data_ready &&
+                       (uint32_t)(HAL_GetTick() - nx_ctrl->update_time) < NX_SCAN_TIMEOUT_MS;
+    *scan = fresh && nx_ctrl->scan;
+    __set_PRIMASK(primask);
+    return fresh;
 }
 
 void NX_SendAngle(const fp32 q[4])

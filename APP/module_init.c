@@ -43,6 +43,7 @@ void Modules_Init(void) {
 #endif
     Referee_Init(&huart1);
     CBoard_Chassis_Init(&hcan2);
+    NX_Init(&hcan2);
 #else
     dbus_init(RC_DIRECT, &hcan2);
     CBoard_Gimbal_Init(&hcan2);

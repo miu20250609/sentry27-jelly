@@ -10,6 +10,20 @@
 #define NUC_PAYLOAD_OFFSET 7U
 #define NUC_FRAME_OVERHEAD (NUC_PAYLOAD_OFFSET + 2U)
 #define NUC_CHASSIS_TIMEOUT_MS 200U
+#define NUC_REFEREE_QUEUE_DEPTH 16U
+#define NUC_REFEREE_FRAGMENT_SIZE 6U
+
+typedef struct
+{
+    uint16_t length;
+    uint8_t data[RX_BUFFER_SIZE];
+} nuc_referee_frame_t;
+
+static nuc_referee_frame_t referee_tx_frame;
+static uint16_t referee_tx_offset;
+static uint8_t referee_tx_id;
+static uint32_t referee_tx_mailbox;
+static bool referee_tx_pending;
 
 static void NucRxCallback(uint8_t* data, uint16_t len);
 static void NUC_CanRxCallback(const uint8_t* data, uint32_t id, void* arg);
@@ -40,13 +54,24 @@ void NUC_Init(UART_HandleTypeDef* nuc_uart)
     nuc_instance.init = nuc_uart_ready;
 }
 
-CAN_Status_t NUC_Init_CAN(CAN_HandleTypeDef* nuc_can, UART_HandleTypeDef* referee_uart)
+CAN_Status_t NUC_InitRefereeCAN(CAN_HandleTypeDef* referee_can)
+{
+    if (nuc_instance.referee_queue != NULL)
+        return CAN_OK;
+    nuc_instance.referee_can = BSP_CAN_Init(referee_can);
+    if (nuc_instance.referee_can == NULL)
+        return CAN_ERROR;
+    nuc_instance.referee_queue = xQueueCreate(NUC_REFEREE_QUEUE_DEPTH, sizeof(nuc_referee_frame_t));
+    return nuc_instance.referee_queue != NULL ? CAN_OK : CAN_ERROR;
+}
+
+CAN_Status_t NUC_Init_CAN(CAN_HandleTypeDef* nuc_can)
 {
     if (nuc_instance.init)
         return CAN_ERROR;
 
-    // CAN 接收控制指令，USART6 继续发送裁判原始帧。
-    NUC_InitUART(referee_uart, NULL);
+    if (NUC_InitRefereeCAN(nuc_can) != CAN_OK)
+        return CAN_ERROR;
     CAN_Instance_t* can = BSP_CAN_Init(nuc_can);
     if (can == NULL)
         return CAN_ERROR;
@@ -254,10 +279,65 @@ bool NUC_GetGimbalCommand(fp32* yaw, uint32_t* sequence)
 
 void NUC_Referee_Tran(const uint8_t* data, const uint16_t len)
 {
-    if (!nuc_uart_ready || len < 5)
+    if (nuc_instance.referee_queue == NULL || data == NULL ||
+        len < NUC_FRAME_OVERHEAD || len > RX_BUFFER_SIZE)
         return;
 
-    BSP_UART_Transmit_To_Mail(&nuc_instance.nuc_uart, data, len, 100);
+    nuc_referee_frame_t frame = {.length = len};
+    memcpy(frame.data, data, len);
+    BaseType_t status;
+    if (__get_IPSR() != 0U)
+    {
+        BaseType_t task_woken = pdFALSE;
+        status = xQueueSendFromISR(nuc_instance.referee_queue, &frame, &task_woken);
+        portYIELD_FROM_ISR(task_woken);
+    }
+    else
+        status = xQueueSend(nuc_instance.referee_queue, &frame, 0);
+    if (status != pdPASS)
+        nuc_instance.referee_drop_count++;
+}
+
+void NUC_Referee_Process(void)
+{
+    if (nuc_instance.referee_queue == NULL || nuc_instance.referee_can == NULL)
+        return;
+    CAN_HandleTypeDef* can = nuc_instance.referee_can->handle;
+    // 同一 ID 的分包逐包完成后再提交，避免多个邮箱导致片序改变。
+    if (referee_tx_pending)
+    {
+        if (HAL_CAN_IsTxMessagePending(can, referee_tx_mailbox))
+            return;
+        referee_tx_pending = false;
+    }
+    if (referee_tx_offset >= referee_tx_frame.length)
+    {
+        if (xQueueReceive(nuc_instance.referee_queue, &referee_tx_frame, 0) != pdPASS)
+            return;
+        referee_tx_offset = 0;
+        referee_tx_id++;
+    }
+    uint16_t size = referee_tx_frame.length - referee_tx_offset;
+    if (size > NUC_REFEREE_FRAGMENT_SIZE)
+        size = NUC_REFEREE_FRAGMENT_SIZE;
+    uint8_t data[8] = {referee_tx_id, referee_tx_offset / NUC_REFEREE_FRAGMENT_SIZE};
+    memcpy(data + 2, referee_tx_frame.data + referee_tx_offset, size);
+    CAN_TxHeaderTypeDef header = {0};
+    header.StdId = CMD_ID_REFEREE_FEEDBACK;
+    header.IDE = CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = size + 2U;
+
+    // 只在短临界区尝试提交，不调用会等待邮箱的 BSP_CAN_Transmit。
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    if (HAL_CAN_GetTxMailboxesFreeLevel(can) != 0U &&
+        HAL_CAN_AddTxMessage(can, &header, data, &referee_tx_mailbox) == HAL_OK)
+    {
+        referee_tx_offset += size;
+        referee_tx_pending = true;
+    }
+    __set_PRIMASK(primask);
 }
 
 nuc_ctrl_t *Get_NUC_Ctrl_Instance(void)

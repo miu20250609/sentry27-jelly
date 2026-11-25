@@ -72,6 +72,7 @@ void Chassis_Task(const void* argument)
     while(1)
     {
         osDelay(1);
+        NUC_Referee_Process();
         nuc_chassis_cmd_t command;
         const nuc_chassis_cmd_t* nuc_cmd = NUC_GetChassisCommand(&command) ? &command : NULL;
         // if (!chassis_check_game_start(&chassis)) continue;

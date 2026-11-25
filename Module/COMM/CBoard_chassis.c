@@ -20,15 +20,12 @@ void CBoard_Referee_Tranmit(const uint8_t game_start, const uint8_t camp, const 
 {
     if (cboard_chassis.init == 0)
         return;
-    uint8_t data[8];
-    data[0] = (game_start & 0x01) | ((camp & 0x01) << 1) | ((attitude & 0x01) << 2);
-    data[1] = 0; // 预留
-    data[2] = shoot_heat & 0xFF;
-    data[3] = (shoot_heat >> 8) & 0xFF;
-    data[4] = bullet_allow & 0xFF;
-    data[5] = (bullet_allow >> 8) & 0xFF;
-    data[6] = 0; // 预留
-    data[7] = 0; // 预留
+    uint8_t data[8] = {0};
+    data[0] = (game_start & 0x01) | ((camp & 0x01) << 1) | ((attitude & 0x03) << 2);
+    data[1] = shoot_heat & 0xFF;
+    data[2] = (shoot_heat >> 8) & 0xFF;
+    data[3] = bullet_allow & 0xFF;
+    data[4] = (bullet_allow >> 8) & 0xFF;
     BSP_CAN_Transmit(cboard_chassis.can_instance, CMD_ID_REFEREE_TRAN, CAN_ID_STD, data, 8);
 }
 

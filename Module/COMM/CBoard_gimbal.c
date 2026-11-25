@@ -21,7 +21,7 @@ void CBoard_RefereeCallback(const uint8_t* data, uint32_t id, void* arg)
     cboard_gimbal_t* cbord_gimbal_ptr = (cboard_gimbal_t*)arg;
     cbord_gimbal_ptr->game_start = data[0] & 0x01;
     cbord_gimbal_ptr->camp = (data[0] >> 1) & 0x01;
-    cbord_gimbal_ptr->attitude = (data[0] >> 2) & 0x01;
+    cbord_gimbal_ptr->attitude = (data[0] >> 2) & 0x03;
     cbord_gimbal_ptr->shoot_heat = (uint16_t)(data[2] << 8 | data[1]);
     cbord_gimbal_ptr->bullet_allow = (uint16_t)(data[4] << 8 | data[3]);
 }

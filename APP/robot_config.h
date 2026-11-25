@@ -7,6 +7,14 @@
 #define NUC_USE_CAN 1
 #endif
 
+// 底盘仅接 USART1 和 CAN2 联调时置 1，恢复整车控制前改回 0。
+#ifndef CHASSIS_COMM_ONLY
+#define CHASSIS_COMM_ONLY 0
+#endif
+#if CHASSIS_COMM_ONLY != 0 && CHASSIS_COMM_ONLY != 1
+#error "CHASSIS_COMM_ONLY must be 0 or 1"
+#endif
+
 // 选择 VOFA 接口，观测变量在各板 debug() 的发送数组中修改。
 #define VOFA_PORT_OFF 0
 #define VOFA_PORT_UART1 1
@@ -37,7 +45,7 @@
 
 //#define USE_CBOARD_IMU
 #ifndef CHASSIS
-//#define CHASSIS
+#define CHASSIS
 #endif
 //#define GIMBAL
 #ifndef OMNI

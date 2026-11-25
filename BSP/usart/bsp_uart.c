@@ -111,7 +111,8 @@ UART_Status_t BSP_UART_Init(UART_Instance_t *uart_ins,
     }
 
     /* 检查Buffer设置是否超过上限*/
-    if (txBufferSize > TX_BUFFER_SIZE || rxBufferSize > RX_BUFFER_SIZE) {
+    if (txBufferSize > TX_BUFFER_SIZE || rxBufferSize == 0 || rxBufferSize > RX_BUFFER_SIZE ||
+        (huart->Instance != USART3 && rxBufferSize < 2)) {
         return UART_ERROR_INVALID_PARAM;
     }
 
@@ -120,6 +121,7 @@ UART_Status_t BSP_UART_Init(UART_Instance_t *uart_ins,
     uart_ins->RxCallback = rxCallback;
     uart_ins->ErrorCallback = errorCallback;
     uart_ins->rxBufferSize = rxBufferSize;
+    uart_ins->rxReadPosition = 0;
     uart_ins->txBufferSize = txBufferSize;
     uart_ins->StackSize = txBufferSize * 4;
 
@@ -165,6 +167,17 @@ UART_Status_t BSP_UART_Init(UART_Instance_t *uart_ins,
     }
 
 
+    UART_DMA_Stop_Receive(uart_ins);
+    if (huart->Instance != USART3)
+    {
+        CLEAR_BIT(huart->hdmarx->Instance->CR, DMA_SxCR_DBM | DMA_SxCR_CT);
+        SET_BIT(huart->hdmarx->Instance->CR, DMA_SxCR_CIRC);
+        huart->hdmarx->Init.Mode = DMA_CIRCULAR;
+        return HAL_UARTEx_ReceiveToIdle_DMA(huart, uart_ins->rxBuffer[0], rxBufferSize) == HAL_OK
+                   ? UART_OK : UART_ERROR;
+    }
+
+    // USART3 是 DBUS 专用口，保留空闲整帧回调，不交付 DMA 半帧。
     /* 启用UART DMA接收 */
     SET_BIT(uart_ins->handle->Instance->CR3, USART_CR3_DMAR);
     __HAL_UART_ENABLE_IT(uart_ins->handle, UART_IT_IDLE);
@@ -235,6 +248,65 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
+static void UART_RxDispatchTo(UART_Instance_t* uart_ins, const uint16_t position)
+{
+    const uint16_t previous = uart_ins->rxReadPosition;
+    uint16_t length = 0;
+    if (position > uart_ins->rxBufferSize || previous == position)
+        return;
+    if (position > previous)
+    {
+        length = position - previous;
+        memcpy(uart_ins->rxBuffer[1], &uart_ins->rxBuffer[0][previous], length);
+    }
+    else
+    {
+        length = uart_ins->rxBufferSize - previous;
+        memcpy(uart_ins->rxBuffer[1], &uart_ins->rxBuffer[0][previous], length);
+        memcpy(&uart_ins->rxBuffer[1][length], uart_ins->rxBuffer[0], position);
+        length += position;
+    }
+    uart_ins->rxReadPosition = position;
+    if (length != 0 && uart_ins->RxCallback != NULL)
+        uart_ins->RxCallback(uart_ins->rxBuffer[1], length);
+}
+
+static uint32_t UART_RxBoundaryPending(const DMA_HandleTypeDef* dma)
+{
+    return __HAL_DMA_GET_FLAG(dma, __HAL_DMA_GET_HT_FLAG_INDEX(dma)) |
+           __HAL_DMA_GET_FLAG(dma, __HAL_DMA_GET_TC_FLAG_INDEX(dma));
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, const uint16_t size)
+{
+    UART_Instance_t* uart_ins = NULL;
+    for (uint8_t i = 0; i < 3; i++)
+    {
+        if (g_uart_instances[i] != NULL && g_uart_instances[i]->handle == huart)
+        {
+            uart_ins = g_uart_instances[i];
+            break;
+        }
+    }
+    if (uart_ins == NULL || huart->Instance == USART3)
+        return;
+
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const HAL_UART_RxEventTypeTypeDef event = HAL_UARTEx_GetRxEventType(huart);
+    if (event == HAL_UART_RXEVENT_HT || event == HAL_UART_RXEVENT_TC)
+        UART_RxDispatchTo(uart_ins, size);
+
+    // IDLE 不能抢先越过待处理的 HT/TC 边界，否则迟到的 DMA 回调会重放数据。
+    if (UART_RxBoundaryPending(huart->hdmarx) == 0U)
+    {
+        const uint16_t position = uart_ins->rxBufferSize - __HAL_DMA_GET_COUNTER(huart->hdmarx);
+        if (UART_RxBoundaryPending(huart->hdmarx) == 0U)
+            UART_RxDispatchTo(uart_ins, position);
+    }
+    __set_PRIMASK(primask);
+}
+
 /**
  * @brief  UART中断处理程序（从HAL_UART_IRQHandler调用）
  * @param  uart_ins: 指向UART句柄结构的指针
@@ -245,6 +317,10 @@ void BSP_UART_IRQHandler(const UART_Instance_t *uart_ins)
     if(uart_ins == NULL || uart_ins->handle == NULL) {
         return;
     }
+
+    // 通用口的 IDLE 由随后调用的 HAL_UART_IRQHandler 处理。
+    if (uart_ins->handle->Instance != USART3)
+        return;
 
     /* 检查IDLE线路检测 */
     if(__HAL_UART_GET_FLAG(uart_ins->handle, UART_FLAG_IDLE))

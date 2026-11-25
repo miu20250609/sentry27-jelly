@@ -77,18 +77,23 @@ typedef struct {
 // 3. 机器人血量数据 (0x0003)
 typedef struct {
     uint16_t ally_1_robot_HP;
-    uint16_t ally_2_robot_HP;
+    uint16_t reserved;
     uint16_t ally_3_robot_HP;
     uint16_t ally_4_robot_HP;
-    uint16_t reserved;
+    int16_t damage_difference;
     uint16_t ally_7_robot_HP;
-    uint16_t ally_outpost_HP;
+    uint16_t outpost_R_HP;
     uint16_t ally_base_HP;
+    uint16_t outpost_B_HP;
+    uint16_t enemy_base_HP;
+    uint16_t ally_control_degree;
+    uint16_t enemy_control_degree;
 } game_robot_HP_t;
 
 // 4. 场地事件数据 (0x0101)
 typedef struct {
     uint32_t event_data;
+    uint32_t event_data_2;
 } event_data_t;
 
 // 5. 裁判警告数据 (0x0104)
@@ -113,6 +118,7 @@ typedef struct {
     uint16_t shooter_cooling_rate;
     uint16_t shooter_heat_limit;
     uint16_t chassis_power_limit;
+    float bullet_speed_limit;
     uint8_t power_management_gimbal_output : 1;
     uint8_t power_management_chassis_output : 1;
     uint8_t power_management_shooter_output : 1;
@@ -135,20 +141,22 @@ typedef struct {
     float angle;
 } robot_pos_t;
 
-// 10. 增益和底盘能量数据 (0x0204)
+// 10. 机器人增益数据 (0x0204)
 typedef struct {
     uint8_t hp_recovery_gain;
     uint16_t cooling_gain;
     uint8_t defense_gain;
     uint8_t negative_defense_gain;
     uint16_t attack_gain;
-    uint8_t energy_feedback;
 } buff_data_t;
 
 // 11. 伤害状态数据 (0x0206)
 typedef struct {
     uint8_t armor_id : 4;
     uint8_t HP_deduction_reason : 4;
+    uint16_t hit_sequence;
+    int16_t hit_position_x;
+    int16_t hit_position_y;
 } hurt_data_t;
 
 // 12. 弹丸发射数据 (0x0207)
@@ -170,7 +178,7 @@ typedef struct {
 // 14. RFID状态数据 (0x0209)
 typedef struct {
     uint32_t rfid_status;
-    uint8_t rfid_status_2;
+    uint16_t rfid_status_2;
 } rfid_status_t;
 
 // 15. 飞镖客户端指令数据 (0x020A)
@@ -204,6 +212,7 @@ typedef struct {
 typedef struct {
     uint32_t sentry_info;
     uint16_t sentry_info_2;
+    uint64_t sentry_info_3;
 } sentry_info_t;
 
 

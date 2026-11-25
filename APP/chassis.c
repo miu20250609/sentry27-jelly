@@ -8,6 +8,17 @@
 #include "pid.h"
 #include "dwt/bsp_dwt.h"
 
+#if defined(CHASSIS) && CHASSIS_COMM_ONLY
+void Chassis_Task(const void* argument)
+{
+    while (1)
+    {
+        osDelay(1);
+        NUC_Referee_Process();
+    }
+}
+#else
+
 const fp32 filter_speed_alpha[3] = {0.2f, 0.2f, 0.2f};
 const pid_config m3508_pid_config = {.mode = PID_POSITION, .kp = 8.0f, .ki = 0.0f, .kd = 0.0f, .max_out = 16000.0f, .max_iout = 3000.0f,
     .out_limit_delta_P = 1000.0f, .out_limit_delta_N = 4000.0f, .deadzone = 0.0f};
@@ -482,4 +493,6 @@ static void chassis_debug(const chassis_t* chassis_ptr)
         vofa_init(&huart6, sizeof(debug) / sizeof(debug[0]), 0);
     vofa_print(debug);
 }
+#endif
+
 #endif

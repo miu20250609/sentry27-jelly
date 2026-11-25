@@ -24,6 +24,10 @@
 void Modules_Init(void) {
     DWT_Init(DWT_CLOCK_FREQ);
 #ifdef CHASSIS
+#if CHASSIS_COMM_ONLY
+    NUC_InitRefereeCAN(&hcan2);
+    Referee_Init(&huart1);
+#else
     dbus_init(RC_CAN, &hcan2);
     initPowerControllerConfig(M3508_TORQUE_CONST, M3508_CURRENT_LIMIT, M3508_OUTPUT_LIMIT,
         K1_CONST,  K2_CONST, K3_CONST, sentinelMaxPower[0]);
@@ -41,6 +45,7 @@ void Modules_Init(void) {
     Referee_Init(&huart1);
     CBoard_Chassis_Init(&hcan2);
     NX_Init(&hcan2);
+#endif
 #else
     dbus_init(RC_DIRECT, &hcan2);
     CBoard_Gimbal_Init(&hcan2);

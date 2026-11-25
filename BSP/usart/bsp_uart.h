@@ -30,12 +30,13 @@ typedef void (*UART_ErrorCallback_t)(uint32_t error);
 /* UART句柄结构定义 */
 struct UART_Handle_s {
     UART_HandleTypeDef *handle;                   /* HAL UART句柄 */
-    uint8_t rxBuffer[2][RX_BUFFER_SIZE];          /* 双缓冲接收 */
+    uint8_t rxBuffer[2][RX_BUFFER_SIZE];          /* 通用口：DMA 环形区/回调快照；DBUS：双缓冲 */
     UART_RxCallback_t RxCallback;                 /* 接收完成回调函数 */
     UART_ErrorCallback_t ErrorCallback;           /* 错误回调函数（可选） */
     osThreadId txTaskHandle;                      /* DMA发送的FreeRTOS任务句柄 */
     QueueHandle_t txQueue;                         /* 按完整报文排队 */
     osSemaphoreId txSemaphore;                     /* DMA 发送缓冲区可用信号 */
+    uint16_t rxReadPosition;
     uint16_t rxBufferSize;                        /* 接收缓冲区大小 */
     uint16_t txBufferSize;                        /* 发送缓冲区大小 */
     uint16_t StackSize;                           /* 发送任务栈大小 */

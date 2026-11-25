@@ -963,6 +963,11 @@
               <FilePath>..\Module\motor\LK\MF9025\mf9025.c</FilePath>
             </File>
             <File>
+              <FileName>j4310.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Module\motor\DAMIAO\DM4310\j4310.c</FilePath>
+            </File>
+            <File>
               <FileName>nuc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Module\NUC\nuc.c</FilePath>

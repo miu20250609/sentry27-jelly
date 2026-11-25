@@ -35,75 +35,75 @@ void Referee_RxCallback(uint8_t* data, const uint16_t len)
             switch (cmd_id)
             {
             case CMD_ID_GAME_STATUS:
-                if (data_length >= sizeof(referee_instance.game_status))
+                if (data_length == sizeof(referee_instance.game_status))
                     memcpy(&referee_instance.game_status, &rx_data[7], sizeof(game_status_t));
                 break;
             case CMD_ID_GAME_RESULT:
-                if (data_length >= sizeof(referee_instance.game_result))
+                if (data_length == sizeof(referee_instance.game_result))
                     memcpy(&referee_instance.game_result, &rx_data[7], sizeof(game_result_t));
                 break;
             case CMD_ID_GAME_ROBOT_HP:
-                if (data_length >= sizeof(referee_instance.game_robot_hp))
+                if (data_length == sizeof(referee_instance.game_robot_hp))
                     memcpy(&referee_instance.game_robot_hp, &rx_data[7], sizeof(game_robot_HP_t));
                 break;
             case CMD_ID_EVENT_DATA:
-                if (data_length >= sizeof(referee_instance.event_data))
+                if (data_length == sizeof(referee_instance.event_data))
                     memcpy(&referee_instance.event_data, &rx_data[7], sizeof(event_data_t));
                 break;
             case CMD_ID_REFEREE_WARNING:
-                if (data_length >= sizeof(referee_instance.referee_warning))
+                if (data_length == sizeof(referee_instance.referee_warning))
                     memcpy(&referee_instance.referee_warning, &rx_data[7], sizeof(referee_warning_t));
                 break;
             case CMD_ID_DART_INFO:
-                if (data_length >= sizeof(referee_instance.dart_info))
+                if (data_length == sizeof(referee_instance.dart_info))
                     memcpy(&referee_instance.dart_info, &rx_data[7], sizeof(dart_info_t));
                 break;
             case CMD_ID_ROBOT_PERFORMANCE:
-                if (data_length >= sizeof(referee_instance.robot_performance))
+                if (data_length == sizeof(referee_instance.robot_performance))
                     memcpy(&referee_instance.robot_performance, &rx_data[7], sizeof(robot_performance_t));
                 break;
             case CMD_ID_POWER_HEAT_DATA:
-                if (data_length >= sizeof(referee_instance.power_heat_data))
+                if (data_length == sizeof(referee_instance.power_heat_data))
                     memcpy(&referee_instance.power_heat_data, &rx_data[7], sizeof(power_heat_data_t));
                 break;
             case CMD_ID_ROBOT_POS:
-                if (data_length >= sizeof(referee_instance.robot_pos))
+                if (data_length == sizeof(referee_instance.robot_pos))
                     memcpy(&referee_instance.robot_pos, &rx_data[7], sizeof(robot_pos_t));
                 break;
             case CMD_ID_BUFF_DATA:
-                if (data_length >= sizeof(referee_instance.buff_data))
+                if (data_length == sizeof(referee_instance.buff_data))
                     memcpy(&referee_instance.buff_data, &rx_data[7], sizeof(buff_data_t));
                 break;
             case CMD_ID_HURT_DATA:
-                if (data_length >= sizeof(referee_instance.hurt_data))
+                if (data_length == sizeof(referee_instance.hurt_data))
                     memcpy(&referee_instance.hurt_data, &rx_data[7], sizeof(hurt_data_t));
                 break;
             case CMD_ID_SHOOT_DATA:
-                if (data_length >= sizeof(referee_instance.shoot_data))
+                if (data_length == sizeof(referee_instance.shoot_data))
                     memcpy(&referee_instance.shoot_data, &rx_data[7], sizeof(shoot_data_t));
                 break;
             case CMD_ID_PROJECTILE_ALLOWANCE:
-                if (data_length >= sizeof(referee_instance.projectile_allowance))
+                if (data_length == sizeof(referee_instance.projectile_allowance))
                     memcpy(&referee_instance.projectile_allowance, &rx_data[7], sizeof(projectile_allowance_t));
                 break;
             case CMD_ID_RFID_STATUS:
-                if (data_length >= sizeof(referee_instance.rfid_status))
+                if (data_length == sizeof(referee_instance.rfid_status))
                     memcpy(&referee_instance.rfid_status, &rx_data[7], sizeof(rfid_status_t));
                 break;
             case CMD_ID_DART_CLIENT_CMD:
-                if (data_length >= sizeof(referee_instance.dart_client_cmd))
+                if (data_length == sizeof(referee_instance.dart_client_cmd))
                     memcpy(&referee_instance.dart_client_cmd, &rx_data[7], sizeof(dart_client_cmd_t));
                 break;
             case CMD_ID_ROBOT_POS_EXT:
-                if (data_length >= sizeof(referee_instance.robot_pos_ext))
+                if (data_length == sizeof(referee_instance.robot_pos_ext))
                     memcpy(&referee_instance.robot_pos_ext, &rx_data[7], sizeof(robot_pos_ext_t));
                 break;
             case CMD_ID_MARK_PROGRESS:
-                if (data_length >= sizeof(referee_instance.mark_progress))
+                if (data_length == sizeof(referee_instance.mark_progress))
                     memcpy(&referee_instance.mark_progress, &rx_data[7], sizeof(mark_progress_t));
                 break;
             case CMD_ID_SENTRY_INFO:
-                if (data_length >= sizeof(referee_instance.sentry_info))
+                if (data_length == sizeof(referee_instance.sentry_info))
                     memcpy(&referee_instance.sentry_info, &rx_data[7], sizeof(sentry_info_t));
                 break;
                 // case CMD_ID_RADAR_INFO :

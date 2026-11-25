@@ -33,13 +33,10 @@ void Modules_Init(void) {
     BMI088_Init();
     super_cap_init(&hcan1);
 #if NUC_USE_CAN
-#if CHASSIS_VOFA_PORT == VOFA_PORT_UART6
-    NUC_Init_CAN(&hcan2, NULL);
-#else
-    NUC_Init_CAN(&hcan2, &huart6);
-#endif
+    NUC_Init_CAN(&hcan2);
 #else
     NUC_Init(&huart6);
+    NUC_InitRefereeCAN(&hcan2);
 #endif
     Referee_Init(&huart1);
     CBoard_Chassis_Init(&hcan2);

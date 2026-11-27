@@ -15,6 +15,32 @@
 #error "CHASSIS_COMM_ONLY must be 0 or 1"
 #endif
 
+// 大 yaw：电机配置须与调试助手一致；角度外环仍用 IM900。
+#define BIG_YAW_CAN_HANDLE (&hcan2)
+#define BIG_YAW_CAN_ID 0x01U
+#define BIG_YAW_MASTER_ID 0x11U
+#define BIG_YAW_P_MAX 12.5f
+#define BIG_YAW_V_MAX 30.0f
+#define BIG_YAW_T_MAX 10.0f
+#define BIG_YAW_FEEDBACK_TIMEOUT_MS 200U
+#define BIG_YAW_SERVICE_PERIOD_MS 100U
+
+// 待装车标定：电机正向、编码器安装零位(rad)、编码器正向、IMU 控制正向。
+#define BIG_YAW_MOTOR_SIGN 1.0f
+#define BIG_YAW_ENCODER_ZERO_RAD 0.0f
+#define BIG_YAW_ENCODER_SIGN 1.0f
+#define BIG_YAW_IMU_SIGN (-1.0f)
+
+// 输入误差为度，PID 输出及速度前馈为 rad/s。以下增益为待实机调整的初值。
+#ifndef BIG_YAW_ANGLE_KP
+#define BIG_YAW_ANGLE_KP 0.05f
+#endif
+#define BIG_YAW_ANGLE_KI 0.0f
+#define BIG_YAW_ANGLE_KD 0.0f
+#define BIG_YAW_SPEED_LIMIT_RAD_S 2.0f
+#define BIG_YAW_INTEGRAL_LIMIT_RAD_S 1.0f
+#define BIG_YAW_FF_GAIN 1.0f
+
 // 选择 VOFA 接口，观测变量在各板 debug() 的发送数组中修改。
 #define VOFA_PORT_OFF 0
 #define VOFA_PORT_UART1 1

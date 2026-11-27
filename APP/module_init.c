@@ -2,7 +2,7 @@
 #include "robot_config.h"
 #include "can.h"
 #include "motor/DJI/M3508/m3508.h"
-#include "motor/LK/MF9025/mf9025.h"
+#include "motor/DAMIAO/DM4310/j4310.h"
 #include "DBUS/dbus.h"
 #include "IMU/INS/ins.h"
 #include "Power_Ctrl/power_ctrl.h"
@@ -32,7 +32,16 @@ void Modules_Init(void) {
     initPowerControllerConfig(M3508_TORQUE_CONST, M3508_CURRENT_LIMIT, M3508_OUTPUT_LIMIT,
         K1_CONST,  K2_CONST, K3_CONST, sentinelMaxPower[0]);
     PowerControl_Init();
-    mf9025_init(&hcan1, MF9025_TX_MIN);
+    const j4310_config_t big_yaw_config = {
+        .hcan = BIG_YAW_CAN_HANDLE,
+        .motor_id = BIG_YAW_CAN_ID,
+        .master_id = BIG_YAW_MASTER_ID,
+        .mode = J4310_MODE_VEL,
+        .p_max = BIG_YAW_P_MAX,
+        .v_max = BIG_YAW_V_MAX,
+        .t_max = BIG_YAW_T_MAX,
+    };
+    j4310_init(&big_yaw_config);
     m3508_init(&hcan1, M3508_TX_1, 4);
     BMI088_Init();
     super_cap_init(&hcan1);

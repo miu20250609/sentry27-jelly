@@ -4,7 +4,7 @@
 #include "pid.h"
 #include "user_lib.h"
 #include "motor/DJI/M3508/m3508.h"
-#include "motor/LK/MF9025/mf9025.h"
+#include "motor/DAMIAO/DM4310/j4310.h"
 #include "DBUS/dbus.h"
 #include "IMU/INS/ins.h"
 #include "Power_Ctrl/power_ctrl.h"
@@ -20,7 +20,6 @@
 #define CHASSIS_MAX_W 1.0f // 底盘最大角速度 rad/s
 
 #define CHASSIS_CONTROL_TIME 0.003f // 控制周期 3ms
-#define RAD_TO_DEG_FACTOR 5729.5779513f // 弧度转角度系数
 #define DEG_PER_CIRCLE 360.0f // 一圈的角度
 #define TORQUE_TO_CURRENT_FACTOR 0.3f // 扭矩转电流系数
 #define SPIN_VW_SPEED 1.8f // (小陀螺)角速度
@@ -46,14 +45,26 @@ typedef struct
     fp32 out; // 输出值
 } m3508_ctrl_t;
 
-// MF9025 电机(云台)控制结构体
+// 角度用度；速度输出和前馈用 rad/s。
 typedef struct
 {
-    pid_t pid; // PID控制器
-    fp32 given_angle; // 给定角度
-    fp32 cur_angle; // 当前角度
-    fp32 ff_speed; // 前馈速度
-} m9025_ctrl_t;
+    pid_t pid;
+    fp32 given_angle;
+    fp32 cur_angle;
+    fp32 ff_speed;
+    fp32 out;
+    j4310_measure_t measure;
+    J4310_Status_t tx_status;
+    fp32 encoder_yaw_deg;
+    fp32 last_position;
+    fp32 imu_reference_deg;
+    uint32_t last_service_time;
+    uint8_t feedback_valid;
+    uint8_t angle_ready;
+    uint8_t encoder_ready;
+    uint8_t imu_reference_ready;
+    uint8_t control_active;
+} big_yaw_ctrl_t;
 
 // 底盘控制数据中心
 typedef struct
@@ -75,7 +86,7 @@ typedef struct
     uint8_t last_gimbal_shutdown_flag; // 上次云台关闭标志
 
     m3508_ctrl_t m3508_controller[4]; // 4个轮毂电机控制数据
-    m9025_ctrl_t m9025_controller; // 航向云台控制数据
+    big_yaw_ctrl_t big_yaw_controller; // 航向云台控制数据
 } ctrl_data_t;
 
 // 底盘系统总实例
@@ -90,7 +101,7 @@ typedef struct
     super_cap_instance *super_cap; // 超级电容实例
     cboard_chassis_t *cboard_chassis; // 底盘控制板通信实例
     m3508_instance *m3508; // 3508电机实例
-    mf9025_instance *mf9025; // 9025电机实例
+    j4310_instance *big_yaw;
     IMU_Data_t *bmi088; // BMI088 IMU数据实例
     PowerControllerConfig *power_ctrl_config; // 功率控制配置
     PowerAllocationResult *power_ctrl_result; // 功率分配结果

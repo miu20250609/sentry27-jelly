@@ -1012,6 +1012,11 @@
               <FileType>1</FileType>
               <FilePath>..\Module\IMU\IM900\im900.c</FilePath>
             </File>
+            <File>
+              <FileName>j4340.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Module\motor\DAMIAO\DM4340\j4340.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

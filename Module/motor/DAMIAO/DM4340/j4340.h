@@ -65,6 +65,8 @@ typedef struct
     float v_max;
     float t_max;
     j4340_measure_t ecd;
+    float first_position;
+    uint8_t first_position_valid;
     uint8_t data_ready;
     uint8_t init;
 } j4340_instance;
@@ -73,6 +75,11 @@ typedef struct
 J4340_Status_t j4340_init(const j4340_config_t *config);
 j4340_instance *Get_J4340_Ptr(CAN_HandleTypeDef *hcan, uint16_t motor_id);
 bool j4340_get_measure(const j4340_instance *ins, j4340_measure_t *measure);
+
+bool j4340_get_first_position(const j4340_instance *ins, float *position);
+J4340_Status_t j4340_enable(const j4340_instance *ins);
+J4340_Status_t j4340_disable(const j4340_instance *ins);
+J4340_Status_t j4340_request_measure(const j4340_instance *ins);
 
 // MIT 位置控制（kp > 0）要求 kd > 0。
 // p_des/v_des/t_ff 的单位为 rad、rad/s、N·m；MIT 越界或非有限数返回参数错误。

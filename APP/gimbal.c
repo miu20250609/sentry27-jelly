@@ -1,4 +1,5 @@
 #include "gimbal.h"
+#include "NUC/nuc.h"
 #include "usart.h"
 #include "can.h"
 #include <math.h>
@@ -40,6 +41,25 @@ const pid_config friction_pid_config = {.mode = PID_POSITION, .kp = 3.0f, .ki = 
 const pid_config trigger_pid_config = {.mode = PID_POSITION, .kp = 8.0f, .ki = 0.0f, .kd = 0.0f, .max_out = 16000.0f, .max_iout = 3000.0f,
     .out_limit_delta_P = 1000.0f, .out_limit_delta_N = 4000.0f, .deadzone = 0.0f};
 
+// 台架初值，装车后按避让间隙和负载端重复定位误差复核。
+static const fp32 park_tolerance_deg = 1.0f;
+static const uint32_t park_settle_ms = 300U;
+
+const j4340_config_t gimbal_big_pitch_motor_config = {
+    .hcan = &hcan2, .motor_id = 0x03U, .master_id = 0x13U,
+    .mode = J4340_MODE_POS_VEL, .p_max = 12.5f, .v_max = 30.0f, .t_max = 10.0f
+};
+
+static const struct {
+    bool upright_calibrated;
+    fp32 upright_rad, speed_limit_rad_s;
+    fp32 position_tolerance_rad, rest_speed_rad_s;
+    uint32_t settle_ms;
+} big_pitch_config = {
+    .upright_calibrated = false, .upright_rad = 0.0f, .speed_limit_rad_s = 0.0f,
+    .position_tolerance_rad = 0.02f, .rest_speed_rad_s = 0.05f, .settle_ms = 300U
+};
+
 gimbal_t gimbal;
 
 // ---------- 内部静态函数声明 ----------
@@ -68,12 +88,18 @@ void Gimbal_Init(gimbal_t* gimbal_ptr)
 {
     memset(gimbal_ptr, 0, sizeof(gimbal_t));
 
+    gimbal_ptr->fold.inhibited = 1U;
+    gimbal_ptr->fold.process_active = true;
+    gimbal_ptr->fold.last_reported = 0xffU;
     gimbal_ptr->cboard = Get_CBoard_Gimbal_Ptr();
     gimbal_ptr->nx_ctrl = Get_NX_Ctrl_Instance();
     gimbal_ptr->rc = Get_DBUS_Instance();
     gimbal_ptr->hi12 = Get_HI12_Instance();
     gimbal_ptr->im900 = Get_IM900_Instance();
 
+    gimbal_ptr->big_pitch.motor = Get_J4340_Ptr(gimbal_big_pitch_motor_config.hcan,
+                                                 gimbal_big_pitch_motor_config.motor_id);
+    gimbal_ptr->big_pitch.last_service = HAL_GetTick() - 100U;
     gimbal_ptr->yaw_motor = Get_GM6020_Ptr(GM6020_TX_2);
     gimbal_ptr->pitch_motor = Get_J4310_Ptr(gimbal_small_pitch_motor_config.hcan,
         gimbal_small_pitch_motor_config.motor_id);
@@ -88,6 +114,111 @@ void Gimbal_Init(gimbal_t* gimbal_ptr)
     gimbal_pid_init(gimbal_ptr);
 }
 
+static void big_pitch_observe_pose(big_pitch_ctrl_t* axis, bool valid, bool upright_calibrated)
+{
+    big_pitch_pose_t candidate = BIG_PITCH_POSE_UNKNOWN;
+    if (valid && fabsf(axis->measure.velocity) <= big_pitch_config.rest_speed_rad_s)
+    {
+        const bool folded = fabsf(axis->measure.position - axis->folded_rad) <= big_pitch_config.position_tolerance_rad;
+        const bool upright = upright_calibrated &&
+            fabsf(axis->measure.position - big_pitch_config.upright_rad) <= big_pitch_config.position_tolerance_rad;
+        if (folded != upright)
+            candidate = folded ? BIG_PITCH_POSE_FOLDED : BIG_PITCH_POSE_UPRIGHT;
+    }
+
+    const uint32_t sample = axis->measure.update_time;
+    if (candidate != axis->candidate_pose || sample - axis->last_pose_sample >= 200U)
+        axis->settle_start = sample;
+    axis->candidate_pose = candidate;
+    axis->last_pose_sample = sample;
+    axis->confirmed_pose = sample - axis->settle_start >= big_pitch_config.settle_ms ?
+                           candidate : BIG_PITCH_POSE_UNKNOWN;
+}
+
+static void gimbal_update_big_pitch(gimbal_t* g, bool request_valid)
+{
+    big_pitch_ctrl_t* axis = &g->big_pitch;
+    if (axis->motor == NULL)
+        return;
+
+    const bool received = j4340_get_measure(axis->motor, &axis->measure);
+    const uint32_t now = HAL_GetTick();
+    const bool fresh = received && now - axis->measure.update_time < 200U &&
+                       axis->measure.status <= 1U && isfinite(axis->measure.position) &&
+                       isfinite(axis->measure.velocity);
+    const bool reference_valid = fresh && j4340_get_first_position(axis->motor, &axis->folded_rad);
+    const bool upright_calibrated = big_pitch_config.upright_calibrated && isfinite(big_pitch_config.upright_rad) &&
+                                    fabsf(big_pitch_config.upright_rad) <= gimbal_big_pitch_motor_config.p_max;
+    big_pitch_observe_pose(axis, reference_valid, upright_calibrated);
+    const bool drive_allowed = reference_valid &&
+        isfinite(big_pitch_config.speed_limit_rad_s) && big_pitch_config.speed_limit_rad_s > 0.0f &&
+        big_pitch_config.speed_limit_rad_s <= gimbal_big_pitch_motor_config.v_max &&
+        (g->ctrl.gimbal_controller == GIMBAL_RC || g->ctrl.gimbal_controller == GIMBAL_UPC);
+    big_pitch_target_t target = BIG_PITCH_IDLE;
+    if (drive_allowed && request_valid && g->fold.reference_valid)
+    {
+        if (g->fold.requested && g->fold.parked)
+            target = BIG_PITCH_FOLD;
+        if (!g->fold.requested && upright_calibrated)
+            target = BIG_PITCH_UPRIGHT;
+    }
+    if (drive_allowed && axis->active && target == BIG_PITCH_IDLE)
+        target = BIG_PITCH_HOLD;
+
+    if (target != axis->target)
+    {
+        axis->target = target;
+        axis->hold_rad = axis->measure.position;
+        axis->last_command = now - 10U;
+    }
+    if (target == BIG_PITCH_IDLE || axis->measure.status == 0U)
+    {
+        if (now - axis->last_service < 100U)
+            return;
+        axis->last_service = now;
+        if (target == BIG_PITCH_IDLE && axis->active)
+        {
+            j4340_disable(axis->motor);
+            if (fresh && axis->measure.status == 0U)
+                axis->active = false;
+        }
+        else if (target == BIG_PITCH_FOLD || target == BIG_PITCH_UPRIGHT)
+        {
+            if (j4340_enable(axis->motor) == J4340_OK)
+                axis->active = true;
+        }
+        j4340_request_measure(axis->motor);
+        return;
+    }
+
+    fp32 position = axis->hold_rad;
+    if (target == BIG_PITCH_FOLD) position = axis->folded_rad;
+    if (target == BIG_PITCH_UPRIGHT) position = big_pitch_config.upright_rad;
+    if (now - axis->last_command < 10U)
+        return;
+    axis->last_command = now;
+    if (j4340_ctrl_pos_vel(axis->motor, position, big_pitch_config.speed_limit_rad_s) == J4340_OK)
+        axis->active = true;
+}
+
+static void gimbal_report_fold(gimbal_t* g)
+{
+    const uint32_t now = HAL_GetTick();
+    uint8_t status = g->fold.inhibited ? NX_FOLD_INHIBITED : 0U;
+    if (g->fold.requested) status |= NX_FOLD_REQUESTED;
+    if (g->fold.parked) status |= NX_FOLD_PARKED;
+    if (g->fold.process_active) status |= NX_FOLD_PROCESS_ACTIVE;
+    if (g->big_pitch.confirmed_pose == BIG_PITCH_POSE_FOLDED) status |= NX_FOLD_COMPLETE;
+    if (g->big_pitch.confirmed_pose == BIG_PITCH_POSE_UPRIGHT) status |= NX_UPRIGHT_COMPLETE;
+    if (status == g->fold.last_reported && now - g->fold.last_report < 50U)
+        return;
+    if (NX_SendFoldStatus(status))
+    {
+        g->fold.last_report = now;
+        g->fold.last_reported = status;
+    }
+}
+
 void Gimbal_Task(const void* argument)
 {
     Gimbal_Init(&gimbal);
@@ -97,6 +228,22 @@ void Gimbal_Task(const void* argument)
         osDelay(1);
         // if (!gimbal_check_game_start(&gimbal)) continue;
         gimbal_switch_controller(&gimbal);
+        nuc_fold_cmd_t request;
+        const bool request_valid = NUC_GetFoldCommand(&request);
+        gimbal.fold.requested = request_valid && request.fold;
+        if (gimbal.fold.requested)
+            gimbal.fold.inhibited = 1U;
+        if (!gimbal.fold.requested)
+        {
+            gimbal.fold.parked = 0U;
+            gimbal.fold.aligned_pending = 0U;
+        }
+        if (gimbal.fold.inhibited)
+        {
+            gimbal.ctrl.fire = 0U;
+            gimbal.ctrl.open_friction = 0U;
+            gimbal.ctrl.friction_ready = 0U;
+        }
         if (ctrl_loop % 3 == 0) // 控制循环 300Hz左右
         {
             gimbal_calc_current_angle(&gimbal);
@@ -125,6 +272,14 @@ void Gimbal_Task(const void* argument)
             gimbal_debug(&gimbal);
 #endif
 
+        gimbal_update_big_pitch(&gimbal, request_valid);
+        if (request_valid)
+            gimbal.fold.upright_requested = !gimbal.fold.requested;
+        if (gimbal.fold.requested)
+            gimbal.fold.process_active = true;
+        else if (gimbal.fold.upright_requested && gimbal.big_pitch.confirmed_pose == BIG_PITCH_POSE_UPRIGHT)
+            gimbal.fold.process_active = false;
+        gimbal_report_fold(&gimbal);
         ctrl_loop++;
         if (ctrl_loop > 3000) ctrl_loop = 0;
     }
@@ -159,7 +314,16 @@ static void gimbal_calc_target_angle(gimbal_t* gimbal_ptr)
                               pitch->control_active && !pitch->feedback_changed;
     if (!pitch->control_active || pitch->feedback_changed)
         gimbal_ptr->ctrl.target_pitch = gimbal_ptr->angle.pitch_deg;
-    if (gimbal_ptr->ctrl.gimbal_controller == GIMBAL_RC)
+    if (gimbal_ptr->fold.inhibited)
+    {
+        if (!gimbal_ptr->fold.requested || !gimbal_ptr->fold.reference_valid ||
+            gimbal_ptr->ctrl.feedback != GIMBAL_FEEDBACK_HI12)
+            return;
+        gimbal_ptr->ctrl.target_pitch = gimbal_ptr->fold.reference_pitch;
+        gimbal_ptr->ctrl.target_yaw = theta_format(gimbal_ptr->fold.base_yaw +
+                                                  gimbal_ptr->fold.reference_relative_yaw);
+    }
+    else if (gimbal_ptr->ctrl.gimbal_controller == GIMBAL_RC)
     {
         if (accept_target)
         {
@@ -209,6 +373,45 @@ static void gimbal_calc_target_angle(gimbal_t* gimbal_ptr)
     }
 }
 
+static bool gimbal_fold_pose(gimbal_t* g, const SensorDataPacket* sample, bool fresh)
+{
+    im900_data_t base;
+    const uint32_t now = HAL_GetTick();
+    bool valid = fresh && IM900_GetData(&base) && (base.data_flags & IM900_DATA_EULER) &&
+                 now - base.update_time < HI12_TIMEOUT_MS && isfinite(base.yaw);
+    bool aligned = false;
+    if (valid)
+    {
+        g->fold.base_yaw = base.yaw;
+        const fp32 pitch = HI12_PITCH_SIGN * sample->pitch - HI12_PITCH_OFFSET;
+        const fp32 relative = theta_format(HI12_YAW_SIGN * sample->yaw - HI12_YAW_OFFSET - base.yaw);
+        if (!g->fold.reference_valid && (!g->fold.reference_pending ||
+            fabsf(pitch - g->fold.reference_pitch) > park_tolerance_deg ||
+            fabsf(theta_format(relative - g->fold.reference_relative_yaw)) > park_tolerance_deg))
+        {
+            g->fold.reference_since = now;
+            g->fold.reference_pending = 1U;
+            g->fold.reference_pitch = pitch;
+            g->fold.reference_relative_yaw = relative;
+        }
+        if (now - g->fold.reference_since >= park_settle_ms)
+            g->fold.reference_valid = 1U;
+        aligned = g->fold.reference_valid && g->fold.requested &&
+                  g->ctrl.pitch_ctrl.feedback_valid && g->ctrl.pitch_ctrl.control_active &&
+                  g->ctrl.pitch_ctrl.measure.status == 1U &&
+                  (g->ctrl.gimbal_controller == GIMBAL_RC || g->ctrl.gimbal_controller == GIMBAL_UPC) &&
+                  fabsf(pitch - g->fold.reference_pitch) <= park_tolerance_deg &&
+                  fabsf(theta_format(relative - g->fold.reference_relative_yaw)) <= park_tolerance_deg;
+    }
+    else
+        g->fold.reference_pending = 0U;
+    if (aligned && !g->fold.aligned_pending)
+        g->fold.aligned_since = now;
+    g->fold.aligned_pending = aligned;
+    g->fold.parked = aligned && now - g->fold.aligned_since >= park_settle_ms;
+    return valid && g->fold.reference_valid && g->fold.requested;
+}
+
 static void gimbal_calc_current_angle(gimbal_t* gimbal_ptr)
 {
     gimbal_ctrl_t* ctrl = &gimbal_ptr->ctrl;
@@ -217,8 +420,11 @@ static void gimbal_calc_current_angle(gimbal_t* gimbal_ptr)
 
     SensorDataPacket sample;
     uint32_t update_time;
-    const bool fresh = HI12_GetData(&sample, &update_time) &&
-                       (uint32_t)(HAL_GetTick() - update_time) < HI12_TIMEOUT_MS;
+    bool fresh = HI12_GetData(&sample, &update_time) &&
+                       (uint32_t)(HAL_GetTick() - update_time) < HI12_TIMEOUT_MS &&
+                       isfinite(sample.pitch) && isfinite(sample.yaw);
+    if (gimbal_ptr->fold.inhibited)
+        fresh = gimbal_fold_pose(gimbal_ptr, &sample, fresh);
     const Gimbal_Feedback feedback = fresh ? GIMBAL_FEEDBACK_HI12 : GIMBAL_FEEDBACK_ENCODER_HOLD;
     if (fresh)
     {
@@ -433,6 +639,9 @@ static void gimbal_send_rotate_cmd(gimbal_t* gimbal_ptr)
 {
     // 小 yaw 保留原 0x2FF 第二槽；旧小 pitch 槽不再输出电压。
     int16_t gm6020_v[4] = {0, (int16_t)gimbal_ptr->ctrl.yaw_ctrl.out, 0, 0};
+    if (gimbal_ptr->fold.inhibited && gimbal_ptr->ctrl.gimbal_controller != GIMBAL_RC &&
+        gimbal_ptr->ctrl.gimbal_controller != GIMBAL_UPC)
+        gm6020_v[1] = 0;
     gm6020_ctrl_voltage(gimbal_ptr->yaw_motor, gm6020_v);
     gimbal_send_pitch_cmd(gimbal_ptr);
 }

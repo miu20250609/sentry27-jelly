@@ -27,6 +27,8 @@ static bool referee_tx_pending;
 
 static void NucRxCallback(uint8_t* data, uint16_t len);
 static void NUC_CanRxCallback(const uint8_t* data, uint32_t id, void* arg);
+static void NUC_FoldCanRxCallback(const uint8_t* data, uint32_t id, void* arg);
+static void NUC_UpdateFold(uint8_t flags, uint32_t update_time);
 static void NUC_Chassis_Handler(const uint8_t* data, uint16_t len);
 static void NUC_Gimbal_Handler(const uint8_t* data, uint16_t len);
 static void NUC_UpdateChassis(fp32 vx, fp32 vy, uint8_t flags);
@@ -36,6 +38,7 @@ static nuc_ctrl_t nuc_instance;
 static uint8_t nuc_rx_buffer[RX_BUFFER_SIZE];
 static uint16_t nuc_rx_size;
 static bool nuc_uart_ready;
+static CAN_Instance_t* nuc_fold_can;
 static bool nuc_chassis_received;
 static uint32_t nuc_chassis_rx_tick;
 
@@ -48,7 +51,7 @@ static void NUC_InitUART(UART_HandleTypeDef* nuc_uart, UART_RxCallback_t rx_call
 
 void NUC_Init(UART_HandleTypeDef* nuc_uart)
 {
-    if (nuc_instance.init || nuc_uart_ready)
+    if (nuc_instance.init || nuc_uart_ready || nuc_fold_can != NULL)
         return;
     NUC_InitUART(nuc_uart, NucRxCallback);
     nuc_instance.init = nuc_uart_ready;
@@ -67,7 +70,7 @@ CAN_Status_t NUC_InitRefereeCAN(CAN_HandleTypeDef* referee_can)
 
 CAN_Status_t NUC_Init_CAN(CAN_HandleTypeDef* nuc_can)
 {
-    if (nuc_instance.init)
+    if (nuc_instance.init || nuc_fold_can != NULL)
         return CAN_ERROR;
 
     if (NUC_InitRefereeCAN(nuc_can) != CAN_OK)
@@ -84,6 +87,31 @@ CAN_Status_t NUC_Init_CAN(CAN_HandleTypeDef* nuc_can)
     if (status == CAN_OK)
         nuc_instance.init = 1;
     return status;
+}
+
+CAN_Status_t NUC_InitFoldCAN(CAN_HandleTypeDef* nuc_can)
+{
+    if (nuc_can == NULL)
+        return CAN_ERROR;
+    if (nuc_fold_can != NULL)
+        return nuc_fold_can->handle == nuc_can ? CAN_OK : CAN_ERROR;
+    if (nuc_instance.init || nuc_uart_ready)
+        return CAN_ERROR;
+    CAN_Instance_t* can = BSP_CAN_Init(nuc_can);
+    if (can == NULL)
+        return CAN_ERROR;
+    const CAN_Status_t status = BSP_CAN_RegisterStdDataCallback(can, CMD_ID_CHASSIS_CTRL, 5,
+                                                               NUC_FoldCanRxCallback, NULL);
+    if (status == CAN_OK)
+        nuc_fold_can = can;
+    return status;
+}
+
+static void NUC_FoldCanRxCallback(const uint8_t* data, uint32_t id, void* arg)
+{
+    (void)arg;
+    if (data != NULL && id == CMD_ID_CHASSIS_CTRL && nuc_fold_can != NULL)
+        NUC_UpdateFold(data[4], HAL_GetTick());
 }
 
 static int16_t NUC_ReadInt16LE(const uint8_t* data)
@@ -218,6 +246,28 @@ static void NUC_UpdateChassis(fp32 vx, fp32 vy, uint8_t flags)
     nuc_instance.use_cap = (flags >> 2) & 0x01;
     nuc_chassis_rx_tick = HAL_GetTick();
     nuc_chassis_received = true;
+    NUC_UpdateFold(flags, nuc_chassis_rx_tick);
+}
+
+static void NUC_UpdateFold(uint8_t flags, uint32_t update_time)
+{
+    nuc_instance.fold_command.fold = (flags >> 1) & 0x01U;
+    nuc_instance.fold_command.update_time = update_time;
+    nuc_instance.fold_received = 1U;
+}
+
+bool NUC_GetFoldCommand(nuc_fold_cmd_t* command)
+{
+    if (command == NULL)
+        return false;
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool fresh = nuc_instance.fold_received &&
+        (uint32_t)(HAL_GetTick() - nuc_instance.fold_command.update_time) < NUC_CHASSIS_TIMEOUT_MS;
+    if (fresh)
+        *command = nuc_instance.fold_command;
+    __set_PRIMASK(primask);
+    return fresh;
 }
 
 bool NUC_GetChassisCommand(nuc_chassis_cmd_t* command)

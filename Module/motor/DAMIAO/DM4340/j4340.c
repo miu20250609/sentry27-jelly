@@ -42,6 +42,11 @@ static void j4340_callback(const uint8_t *data, uint32_t id, void *arg)
     measure.rotor_temperature = data[7];
     measure.status = data[0] >> 4;
     measure.update_time = HAL_GetTick();
+    if (!ins->first_position_valid && measure.status <= 1U)
+    {
+        ins->first_position = measure.position;
+        ins->first_position_valid = 1U;
+    }
     ins->ecd = measure;
     ins->data_ready = 1U;
 }
@@ -129,12 +134,77 @@ bool j4340_get_measure(const j4340_instance *ins, j4340_measure_t *measure)
     return ready;
 }
 
+bool j4340_get_first_position(const j4340_instance *ins, float *position)
+{
+    if (ins == NULL || position == NULL || !ins->init)
+        return false;
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool valid = ins->first_position_valid != 0U;
+    if (valid)
+        *position = ins->first_position;
+    __set_PRIMASK(primask);
+    return valid;
+}
+
+// 总线无可用邮箱时返回，由任务在下个周期重试。
+static J4340_Status_t j4340_submit(const j4340_instance *ins, uint16_t id, const uint8_t *data, uint8_t size)
+{
+    CAN_HandleTypeDef *can = ins->can_ins->handle;
+    CAN_TxHeaderTypeDef header = {0};
+    header.StdId = id;
+    header.IDE = CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = size;
+    uint8_t payload[8] = {0};
+    memcpy(payload, data, size);
+    uint32_t mailbox;
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool sent = HAL_CAN_GetTxMailboxesFreeLevel(can) != 0U &&
+                      HAL_CAN_AddTxMessage(can, &header, payload, &mailbox) == HAL_OK;
+    __set_PRIMASK(primask);
+    return sent ? J4340_OK : J4340_ERROR_CAN_TX;
+}
+
 static J4340_Status_t j4340_transmit(const j4340_instance *ins, uint16_t offset,
                                      const uint8_t *data, uint8_t size)
 {
-    if (BSP_CAN_Transmit(ins->can_ins, ins->motor_id + offset, CAN_ID_STD, data, size) != CAN_OK)
-        return J4340_ERROR_CAN_TX;
-    return J4340_OK;
+    return j4340_submit(ins, ins->motor_id + offset, data, size);
+}
+
+static J4340_Status_t j4340_send_command(const j4340_instance *ins, uint8_t command)
+{
+    if (ins == NULL || !ins->init || ins->can_ins == NULL)
+        return J4340_ERROR_NOT_INIT;
+    uint16_t offset;
+    switch (ins->mode)
+    {
+        case J4340_MODE_MIT: offset = 0U; break;
+        case J4340_MODE_POS_VEL: offset = 0x100U; break;
+        case J4340_MODE_VEL: offset = 0x200U; break;
+        default: return J4340_ERROR_INVALID_MODE;
+    }
+    const uint8_t data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, command};
+    return j4340_transmit(ins, offset, data, 8U);
+}
+
+J4340_Status_t j4340_enable(const j4340_instance *ins)
+{
+    return j4340_send_command(ins, 0xFCU);
+}
+
+J4340_Status_t j4340_disable(const j4340_instance *ins)
+{
+    return j4340_send_command(ins, 0xFDU);
+}
+
+J4340_Status_t j4340_request_measure(const j4340_instance *ins)
+{
+    if (ins == NULL || !ins->init || ins->can_ins == NULL)
+        return J4340_ERROR_NOT_INIT;
+    const uint8_t data[4] = {(uint8_t)ins->motor_id, (uint8_t)(ins->motor_id >> 8), 0xCC, 0x00};
+    return j4340_submit(ins, 0x7FFU, data, 4U);
 }
 
 J4340_Status_t j4340_ctrl_mit(const j4340_instance *ins, float p_des, float v_des,

@@ -60,6 +60,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Module/motor/DJI/M2006/m2006.c
         Module/motor/LK/MF9025/mf9025.c
         Module/motor/DAMIAO/DM4310/j4310.c
+        Module/motor/DAMIAO/DM4340/j4340.c
         Module/motor/RS/rs02.c
         Module/DBUS/dbus.c
         Module/NUC/nuc.c

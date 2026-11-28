@@ -50,6 +50,25 @@ bool NX_GetScanRequest(const nx_ctrl_t* nx_ctrl, bool* scan)
     return fresh;
 }
 
+bool NX_SendFoldStatus(uint8_t status)
+{
+    if (!nx_instance.init) return false;
+    CAN_HandleTypeDef* can = nx_instance.nx_can->handle;
+    CAN_TxHeaderTypeDef header = {0};
+    header.StdId = CMD_ID_FOLD_STATUS;
+    header.IDE = CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = 1U;
+    uint8_t data[8] = {status};
+    uint32_t mailbox;
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const bool sent = HAL_CAN_GetTxMailboxesFreeLevel(can) != 0U &&
+                      HAL_CAN_AddTxMessage(can, &header, data, &mailbox) == HAL_OK;
+    __set_PRIMASK(primask);
+    return sent;
+}
+
 void NX_SendAngle(const fp32 q[4])
 {
     if (!nx_instance.init) return;

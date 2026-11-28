@@ -51,6 +51,7 @@ void Modules_Init(void) {
     dbus_init(RC_DIRECT, &hcan2);
     CBoard_Gimbal_Init(&hcan2);
     NX_Init(&hcan2);
+    NUC_InitFoldCAN(&hcan2);
 #if GIMBAL_VOFA_PORT != VOFA_PORT_UART1
     HI12_Init(&huart1);
 #endif
@@ -61,5 +62,6 @@ void Modules_Init(void) {
     m2006_init(&hcan1, M2006_TX_2, 1);
     gm6020_init(&hcan1, GM6020_TX_2, 2);
     j4310_init(&gimbal_small_pitch_motor_config);
+    j4340_init(&gimbal_big_pitch_motor_config);
 #endif
 }

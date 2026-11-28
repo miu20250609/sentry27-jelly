@@ -5,6 +5,7 @@
 #include "user_lib.h"
 #include "motor/DJI/GM6020/gm6020.h"
 #include "motor/DAMIAO/DM4310/j4310.h"
+#include "motor/DAMIAO/DM4340/j4340.h"
 #include "motor/DJI/M2006/m2006.h"
 #include "motor/DJI/M3508/m3508.h"
 #include "COMM/CBoard_gimbal.h"
@@ -102,9 +103,37 @@ typedef struct
     small_pitch_ctrl_t pitch_ctrl;
 } gimbal_ctrl_t;
 
+typedef enum {
+    BIG_PITCH_IDLE, BIG_PITCH_HOLD, BIG_PITCH_FOLD, BIG_PITCH_UPRIGHT
+} big_pitch_target_t;
+
+typedef enum {
+    BIG_PITCH_POSE_UNKNOWN, BIG_PITCH_POSE_FOLDED, BIG_PITCH_POSE_UPRIGHT
+} big_pitch_pose_t;
+
+typedef struct {
+    j4340_instance *motor;
+    j4340_measure_t measure;
+    big_pitch_target_t target;
+    fp32 folded_rad, hold_rad;
+    uint32_t last_service, last_command, settle_start;
+    uint32_t last_pose_sample;
+    big_pitch_pose_t candidate_pose, confirmed_pose;
+    bool active;
+} big_pitch_ctrl_t;
+
 typedef struct
 {
     gimbal_ctrl_t ctrl;
+    big_pitch_ctrl_t big_pitch;
+    struct {
+        fp32 reference_pitch, reference_relative_yaw;
+        fp32 base_yaw;
+        uint32_t reference_since, aligned_since, last_report;
+        uint8_t inhibited, requested, reference_pending, reference_valid;
+        uint8_t aligned_pending, parked, last_reported;
+        bool process_active, upright_requested;
+    } fold;
     gm6020_instance* yaw_motor;
     j4310_instance* pitch_motor;
     m2006_instance* trigger_motor;
@@ -121,6 +150,7 @@ typedef struct
     vofa_t* vofa;
 } gimbal_t;
 
+extern const j4340_config_t gimbal_big_pitch_motor_config;
 extern const j4310_config_t gimbal_small_pitch_motor_config;
 
 void Gimbal_Init(gimbal_t* gimbal_ptr);

@@ -8,6 +8,7 @@ typedef enum
 {
     CMD_ID_GIMBAL_CTRL = 0x404,
     CMD_ID_GIMBAL_ANGLE = 0x504,
+    CMD_ID_FOLD_STATUS = 0x505,
 } nx_cmd_id_t;
 
 typedef struct
@@ -23,6 +24,11 @@ typedef struct
 } nx_ctrl_t;
 
 void NX_Init(CAN_HandleTypeDef *hcan);
+enum {
+    NX_FOLD_INHIBITED = 1U, NX_FOLD_REQUESTED = 2U, NX_FOLD_PARKED = 4U,
+    NX_FOLD_COMPLETE = 8U, NX_UPRIGHT_COMPLETE = 16U, NX_FOLD_PROCESS_ACTIVE = 32U
+};
+bool NX_SendFoldStatus(uint8_t status);
 void NX_SendAngle(const fp32 q[4]);
 bool NX_GetScanRequest(const nx_ctrl_t* nx_ctrl, bool* scan);
 nx_ctrl_t *Get_NX_Ctrl_Instance(void);

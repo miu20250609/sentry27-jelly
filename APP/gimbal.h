@@ -4,6 +4,7 @@
 #include "typedef.h"
 #include "user_lib.h"
 #include "motor/DJI/GM6020/gm6020.h"
+#include "motor/DAMIAO/DM4310/j4310.h"
 #include "motor/DJI/M2006/m2006.h"
 #include "motor/DJI/M3508/m3508.h"
 #include "COMM/CBoard_gimbal.h"
@@ -22,7 +23,6 @@
 #define YAW_LIMIT 30.0f
 #define PITCH_LIMIT 20.0f
 #define ECD_YAW_OFFSET 60.0f
-#define ECD_PITCH_OFFSET 180.0f
 
 #define HI12_TIMEOUT_MS 200U
 // 待实车标定：模块姿态转换到瞄准控制坐标，单位度。
@@ -69,6 +69,21 @@ typedef struct
     fp32 out; 
 } angle_ctrl_t;
 
+// 角度误差为度，速度输出为 rad/s；状态与电机实例分别保存。
+typedef struct
+{
+    pid_t pid;
+    j4310_measure_t measure;
+    J4310_Status_t tx_status;
+    fp32 out;
+    fp32 last_position;
+    uint32_t last_service_time;
+    uint8_t feedback_valid;
+    uint8_t feedback_changed;
+    uint8_t encoder_ready;
+    uint8_t control_active;
+} small_pitch_ctrl_t;
+
 typedef struct
 {
     Gimbal_Controller gimbal_controller;
@@ -83,13 +98,15 @@ typedef struct
 
     friction_ctrl_t friction_ctrl[2];
     trigger_ctrl_t trigger_ctrl;
-    angle_ctrl_t angle_ctrl[2];
+    angle_ctrl_t yaw_ctrl;
+    small_pitch_ctrl_t pitch_ctrl;
 } gimbal_ctrl_t;
 
 typedef struct
 {
     gimbal_ctrl_t ctrl;
-    gm6020_instance* angle_motor;
+    gm6020_instance* yaw_motor;
+    j4310_instance* pitch_motor;
     m2006_instance* trigger_motor;
     m3508_instance* friction_motor;
 
@@ -103,6 +120,8 @@ typedef struct
 
     vofa_t* vofa;
 } gimbal_t;
+
+extern const j4310_config_t gimbal_small_pitch_motor_config;
 
 void Gimbal_Init(gimbal_t* gimbal_ptr);
 void Gimbal_Task(const void* argument);

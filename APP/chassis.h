@@ -111,6 +111,8 @@ typedef struct
     angle_t gimbal_angle; // 云台角度数据
 } chassis_t;
 
+extern const j4310_config_t chassis_big_yaw_motor_config;
+
 /**
  * @brief 底盘控制任务函数，运行在RTOS任务中
  */

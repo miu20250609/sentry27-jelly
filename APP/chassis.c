@@ -10,6 +10,14 @@
 #include "pid.h"
 #include "dwt/bsp_dwt.h"
 
+// 与电调配置一致；底盘初始化与控制共用此配置。
+const j4310_config_t chassis_big_yaw_motor_config = {
+    .hcan = &hcan2,
+    .motor_id = 0x01U, .master_id = 0x11U,
+    .mode = J4310_MODE_VEL,
+    .p_max = 12.5f, .v_max = 30.0f, .t_max = 10.0f
+};
+
 #if defined(CHASSIS) && CHASSIS_COMM_ONLY
 void Chassis_Task(const void* argument)
 {
@@ -24,12 +32,29 @@ void Chassis_Task(const void* argument)
 const fp32 filter_speed_alpha[3] = {0.2f, 0.2f, 0.2f};
 const pid_config m3508_pid_config = {.mode = PID_POSITION, .kp = 8.0f, .ki = 0.0f, .kd = 0.0f, .max_out = 16000.0f, .max_iout = 3000.0f,
     .out_limit_delta_P = 1000.0f, .out_limit_delta_N = 4000.0f, .deadzone = 0.0f};
+// 角度误差用度，输出为 rad/s；增益和安装方向待装车调试。
 const pid_config big_yaw_angle_pid_config = {
     .mode = PID_POSITION,
-    .kp = BIG_YAW_ANGLE_KP, .ki = BIG_YAW_ANGLE_KI, .kd = BIG_YAW_ANGLE_KD,
-    .max_out = BIG_YAW_SPEED_LIMIT_RAD_S, .max_iout = BIG_YAW_INTEGRAL_LIMIT_RAD_S,
-    .out_limit_delta_P = BIG_YAW_SPEED_LIMIT_RAD_S,
-    .out_limit_delta_N = BIG_YAW_SPEED_LIMIT_RAD_S, .deadzone = 0.0f
+    .kp = 0.05f, .ki = 0.0f, .kd = 0.0f,
+    .max_out = 2.0f, .max_iout = 1.0f,
+    .out_limit_delta_P = 2.0f, .out_limit_delta_N = 2.0f, .deadzone = 0.0f
+};
+static const struct {
+    fp32 motor_sign;
+    fp32 encoder_zero_rad;
+    fp32 encoder_sign;
+    fp32 imu_sign;
+    fp32 feedforward_gain;
+    uint32_t feedback_timeout_ms;
+    uint32_t service_period_ms;
+} big_yaw_control_config = {
+    .motor_sign = 1.0f,
+    .encoder_zero_rad = 0.0f,
+    .encoder_sign = 1.0f,
+    .imu_sign = -1.0f,
+    .feedforward_gain = 1.0f,
+    .feedback_timeout_ms = 200U,
+    .service_period_ms = 100U
 };
 chassis_t chassis;
 
@@ -66,7 +91,7 @@ void Chassis_Init(chassis_t* chassis_ptr)
     chassis_ptr->m3508 = Get_M3508_Ptr(M3508_TX_1);
     chassis_ptr->cboard_chassis = Get_CBoard_Chassis_Ptr();
     chassis_ptr->ctx = Get_PowerControlParam_Ptr();
-    chassis_ptr->big_yaw = Get_J4310_Ptr(BIG_YAW_CAN_HANDLE, BIG_YAW_CAN_ID);
+    chassis_ptr->big_yaw = Get_J4310_Ptr(chassis_big_yaw_motor_config.hcan, chassis_big_yaw_motor_config.motor_id);
     chassis_ptr->nuc_ctrl = Get_NUC_Ctrl_Instance();
     chassis_ptr->nx_ctrl = Get_NX_Ctrl_Instance();
     chassis_ptr->power_ctrl_config = Get_PowerControllerConfig_Ptr();
@@ -78,7 +103,7 @@ void Chassis_Init(chassis_t* chassis_ptr)
     memset(&chassis_ptr->ctrl, 0, sizeof(chassis_ptr->ctrl));
     chassis_filter_init(chassis_ptr);
     chassis_pid_init(chassis_ptr);
-    chassis_ptr->ctrl.big_yaw_controller.last_service_time = HAL_GetTick() - BIG_YAW_SERVICE_PERIOD_MS;
+    chassis_ptr->ctrl.big_yaw_controller.last_service_time = HAL_GetTick() - big_yaw_control_config.service_period_ms;
 }
 
 /**
@@ -290,7 +315,7 @@ static void chassis_update_big_yaw_feedback(chassis_t* chassis_ptr)
     const bool received = j4310_get_measure(chassis_ptr->big_yaw, &ctrl->measure);
     const uint32_t now = HAL_GetTick();
     ctrl->feedback_valid = received &&
-        (uint32_t)(now - ctrl->measure.update_time) < BIG_YAW_FEEDBACK_TIMEOUT_MS &&
+        (uint32_t)(now - ctrl->measure.update_time) < big_yaw_control_config.feedback_timeout_ms &&
         ctrl->measure.status <= 1U && isfinite(ctrl->measure.position) &&
         isfinite(ctrl->measure.velocity) && isfinite(ctrl->measure.torque);
     ctrl->angle_ready = 0U;
@@ -299,20 +324,20 @@ static void chassis_update_big_yaw_feedback(chassis_t* chassis_ptr)
 
     if (!ctrl->encoder_ready)
     {
-        ctrl->encoder_yaw_deg = theta_format(BIG_YAW_ENCODER_SIGN *
-            (ctrl->measure.position - BIG_YAW_ENCODER_ZERO_RAD) * 57.295779513f);
+        ctrl->encoder_yaw_deg = theta_format(big_yaw_control_config.encoder_sign *
+            (ctrl->measure.position - big_yaw_control_config.encoder_zero_rad) * 57.295779513f);
         ctrl->encoder_ready = 1U;
     }
     else
     {
         // 处理映射端点回绕；实际固件跨圈行为仍需装车验证。
         fp32 delta = ctrl->measure.position - ctrl->last_position;
-        if (delta > BIG_YAW_P_MAX)
-            delta -= 2.0f * BIG_YAW_P_MAX;
-        else if (delta < -BIG_YAW_P_MAX)
-            delta += 2.0f * BIG_YAW_P_MAX;
+        if (delta > chassis_big_yaw_motor_config.p_max)
+            delta -= 2.0f * chassis_big_yaw_motor_config.p_max;
+        else if (delta < -chassis_big_yaw_motor_config.p_max)
+            delta += 2.0f * chassis_big_yaw_motor_config.p_max;
         ctrl->encoder_yaw_deg = theta_format(ctrl->encoder_yaw_deg +
-            BIG_YAW_ENCODER_SIGN * delta * 57.295779513f);
+            big_yaw_control_config.encoder_sign * delta * 57.295779513f);
     }
     ctrl->last_position = ctrl->measure.position;
 }
@@ -341,7 +366,7 @@ static void chassis_calc_angle(chassis_t* chassis_ptr)
     }
     const fp32 gimbal_angle[3] = {theta_format(imu_yaw - ctrl->imu_reference_deg), 0.0f, 0.0f};
     Angle_Update(&chassis_ptr->gimbal_angle, gimbal_angle);
-    ctrl->cur_angle = BIG_YAW_IMU_SIGN * chassis_ptr->gimbal_angle.yaw_total_angle;
+    ctrl->cur_angle = big_yaw_control_config.imu_sign * chassis_ptr->gimbal_angle.yaw_total_angle;
     const fp32 chassis_angle[3] = {
         theta_format(ctrl->encoder_yaw_deg + gimbal_angle[0]), 0.0f, 0.0f
     };
@@ -400,7 +425,7 @@ static void chassis_calc_gimbalmotor_angle(chassis_t* chassis_ptr)
 {
     BMI088_Read();
     chassis_ptr->ctrl.big_yaw_controller.given_angle = chassis_ptr->ctrl.given_gimbal_l_yaw;
-    chassis_ptr->ctrl.big_yaw_controller.ff_speed = BIG_YAW_FF_GAIN * chassis_ptr->bmi088->Gyro[2];
+    chassis_ptr->ctrl.big_yaw_controller.ff_speed = big_yaw_control_config.feedforward_gain * chassis_ptr->bmi088->Gyro[2];
 }
 
 /**
@@ -427,7 +452,7 @@ static void chassis_calc_gimbalmotor_pidout(chassis_t* chassis_ptr)
     PID_calc(&ctrl->pid, ctrl->cur_angle, ctrl->given_angle);
     ctrl->out = ctrl->pid.out[0] + ctrl->ff_speed;
     if (isfinite(ctrl->out))
-        ctrl->out = fmaxf(-BIG_YAW_SPEED_LIMIT_RAD_S, fminf(BIG_YAW_SPEED_LIMIT_RAD_S, ctrl->out));
+        ctrl->out = fmaxf(-big_yaw_angle_pid_config.max_out, fminf(big_yaw_angle_pid_config.max_out, ctrl->out));
 }
 
 /**
@@ -533,10 +558,10 @@ static void chassis_send_gimbalmotor_cmd(chassis_t* chassis_ptr)
         return;
     }
     const uint32_t now = HAL_GetTick();
-    const bool service_due = (uint32_t)(now - ctrl->last_service_time) >= BIG_YAW_SERVICE_PERIOD_MS;
+    const bool service_due = (uint32_t)(now - ctrl->last_service_time) >= big_yaw_control_config.service_period_ms;
     const bool allowed = !chassis_ptr->ctrl.gimbal_shutdown_flag && ctrl->angle_ready &&
         ctrl->feedback_valid &&
-        (uint32_t)(now - ctrl->measure.update_time) < BIG_YAW_FEEDBACK_TIMEOUT_MS &&
+        (uint32_t)(now - ctrl->measure.update_time) < big_yaw_control_config.feedback_timeout_ms &&
         isfinite(ctrl->out);
 
     if (!allowed)
@@ -575,7 +600,7 @@ static void chassis_send_gimbalmotor_cmd(chassis_t* chassis_ptr)
     }
 
     // 首次进入或恢复控制先发零速，下一周期才采用新的角度指令。
-    const fp32 speed = ctrl->control_active ? BIG_YAW_MOTOR_SIGN * ctrl->out : 0.0f;
+    const fp32 speed = ctrl->control_active ? big_yaw_control_config.motor_sign * ctrl->out : 0.0f;
     ctrl->tx_status = j4310_ctrl_vel(chassis_ptr->big_yaw, speed);
     ctrl->control_active = ctrl->tx_status == J4310_OK;
     if (!ctrl->control_active)

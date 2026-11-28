@@ -20,6 +20,7 @@
 #include "Super_Cap/super_cap.h"
 #include "VOFA/vofa.h"
 #include "gimbal.h"
+#include "chassis.h"
 
 void Modules_Init(void) {
     DWT_Init(DWT_CLOCK_FREQ);
@@ -32,16 +33,7 @@ void Modules_Init(void) {
     initPowerControllerConfig(M3508_TORQUE_CONST, M3508_CURRENT_LIMIT, M3508_OUTPUT_LIMIT,
         K1_CONST,  K2_CONST, K3_CONST, sentinelMaxPower[0]);
     PowerControl_Init();
-    const j4310_config_t big_yaw_config = {
-        .hcan = BIG_YAW_CAN_HANDLE,
-        .motor_id = BIG_YAW_CAN_ID,
-        .master_id = BIG_YAW_MASTER_ID,
-        .mode = J4310_MODE_VEL,
-        .p_max = BIG_YAW_P_MAX,
-        .v_max = BIG_YAW_V_MAX,
-        .t_max = BIG_YAW_T_MAX,
-    };
-    j4310_init(&big_yaw_config);
+    j4310_init(&chassis_big_yaw_motor_config);
     m3508_init(&hcan1, M3508_TX_1, 4);
     BMI088_Init();
     super_cap_init(&hcan1);
@@ -68,5 +60,6 @@ void Modules_Init(void) {
     m3508_init(&hcan1, M3508_TX_1, 2);
     m2006_init(&hcan1, M2006_TX_2, 1);
     gm6020_init(&hcan1, GM6020_TX_2, 2);
+    j4310_init(&gimbal_small_pitch_motor_config);
 #endif
 }
